@@ -1,0 +1,50 @@
+import re
+
+class Lexer:
+    TOKENS = [
+        (r'//.*', 'COMMENT'),                         # Single-line comments
+        (r'#.*', 'COMMENT'),                          # Single-line hash comments
+        (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
+        (r'\d+', 'NUMBER'),                           # Numbers
+        (r'[$a-zA-Z_]\w*', 'IDENTIFIER'),              # General identifiers and keywords
+        (r'->', 'ARROW'),                             # Function arrow
+        (r'when', 'WHEN'),                            # 'when' keyword
+        (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
+        (r'[+\-*/=]', 'OPERATOR'),                    # Arithmetic operators
+        (r'[(){};,]', 'PUNCTUATION'),                 # Punctuation
+        (r'\".*?\"|\'.*?\'', 'STRING'),               # Strings
+        (r'\s+', None),                               # Skip whitespace
+    ]
+
+    def __init__(self, code):
+        self.code = code
+        self.line = 1
+        self.column = 1
+
+    def tokenize(self):
+        tokens = []
+        pos = 0
+        while pos < len(self.code):
+            match = None
+            for pattern, token_type in self.TOKENS:
+                regex = re.compile(pattern)
+                match = regex.match(self.code, pos)
+                if match:
+                    match_text = match.group(0)
+                    # Skip comments and whitespace
+                    if token_type not in ('COMMENT', 'BLOCK_COMMENT', None):
+                        tokens.append(
+                            (token_type, match_text, self.line, self.column))
+                    # Update line and column
+                    newlines = match_text.count('\n')
+                    if newlines > 0:
+                        self.line += newlines
+                        self.column = len(match_text.split('\n')[-1]) + 1
+                    else:
+                        self.column += len(match_text)
+                    pos = match.end()
+                    break
+            if not match:
+                raise SyntaxError(f"Unexpected character at line {self.line}, column {self.column}: '{self.code[pos]}'")
+        return tokens
+
