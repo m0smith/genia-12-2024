@@ -137,40 +137,42 @@ def test_multi_arity_function_definition():
 
     parser = Parser(tokens)
     ast = parser.parse()
-    col= 4
-    lin = 1
+
     expected_ast = [
         {
             "type": "function_definition",
             "name": "add",
             "parameters": [],
             "guard": None,
-            "body": {"type": "number", "value": "0", "line": lin, "column": col + 9},
-            "line": lin,
-            "column": col,
+            "body": {"type": "number", "value": "0", "line": 1, "column": 13},
+            "line": 1,
+            "column": 4,
         },
         {
             "type": "function_definition",
             "name": "add",
-            "parameters": ["a"],
+            "parameters": [{"type": "identifier", "value": "a"}],
             "guard": None,
-            "body": {"type": "identifier", "value": "a", "line": lin  + 1, "column": col + 14},
-            "line": lin + 1,
-            "column": col + 4,
+            "body": {"type": "identifier", "value": "a", "line": 2, "column": 18},
+            "line": 2,
+            "column": 8,
         },
         {
             "type": "function_definition",
             "name": "add",
-            "parameters": ["a", "b"],
+            "parameters": [
+                {"type": "identifier", "value": "a"},
+                {"type": "identifier", "value": "b"},
+            ],
             "guard": None,
             "body": {
                 "type": "operator",
                 "operator": "+",
-                "left": {"type": "identifier", "value": "a", "line": 3, "column": col + 17},
-                "right": {"type": "identifier", "value": "b", "line": 3, "column": col + 21},
+                "left": {"type": "identifier", "value": "a", "line": 3, "column": 21},
+                "right": {"type": "identifier", "value": "b", "line": 3, "column": 25},
             },
             "line": 3,
-            "column": col + 4,
+            "column": 8,
         },
     ]
 
@@ -188,7 +190,7 @@ def test_function_with_guard():
         {
             "type": "function_definition",
             "name": "fact",
-            "parameters": ["n"],
+            "parameters": [{"type": "identifier", "value": "n"}],
             "guard": {
                 "type": "comparison",
                 "operator": ">",
@@ -220,6 +222,7 @@ def test_function_with_guard():
     ]
 
     assert ast == expected_ast
+
     
 def test_multiple_arities(interpreter):
     code = """
@@ -234,7 +237,7 @@ def test_multiple_arities(interpreter):
     result = interpreter.run(code)
     assert result == 5  # The last function call `add(2, 3)` should return 5
     
-def test_function_with_guards(interpreter):
+def test_function_with_pattern_matching(interpreter):
     code = """
     fn fact(0) -> 1;
     fn fact(n) when n > 0 -> n * fact(n - 1);
@@ -243,5 +246,6 @@ def test_function_with_guards(interpreter):
     """
     result = interpreter.run(code)
     assert result == 120
+
 
 

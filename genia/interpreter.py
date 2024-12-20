@@ -125,28 +125,25 @@ class Parser:
         parameters = []
         while self.tokens and self.tokens[0][1] != ")":
             token_type, param, param_line, param_col = self.tokens.popleft()
-            if token_type != "IDENTIFIER" and param != ",":
-                raise SyntaxError(f"Expected parameter name or ',', found {param} at line {param_line}, column {param_col}.")
-            if token_type == "IDENTIFIER":
-                parameters.append(param)
+            if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
+                raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
+            if token_type != "PUNCTUATION":  # Add valid patterns
+                parameters.append({"type": token_type.lower(), "value": param})
         if not self.tokens or self.tokens[0][1] != ")":
             raise SyntaxError(f"Unmatched '(' in function definition at line {line}, column {column}.")
         self.tokens.popleft()  # Consume ')'
 
         # Parse optional guard (when clause)
-        print(f"Before checking for the guard {self.tokens}")
         guard = None
         if self.tokens and self.tokens[0][1] == "when":
             self.tokens.popleft()  # Consume 'when'
             guard = self.expression()  # Parse the guard expression fully
 
         # Parse return arrow and expression
-        print(f"After checking for the guard {self.tokens}")
         if not self.tokens or self.tokens[0][1] != "->":
             raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
         self.tokens.popleft()  # Consume '->'
-
-        body = self.expression()  # Parse the function body
+        body = self.expression()
 
         return {
             "type": "function_definition",
@@ -157,7 +154,6 @@ class Parser:
             "line": line,
             "column": column,
         }
-
 
 
     def function_call(self, function_name, line, column):
@@ -293,6 +289,29 @@ class Interpreter:
         if not method:
             raise RuntimeError(f"Unsupported node type: {node['type']} at line {node.get('line')}, column {node.get('column')}")
         return method(node)
+    
+    def eval_comparison(self, node):
+        """
+        Evaluate a comparison node.
+        """
+        left = self.evaluate(node["left"])
+        right = self.evaluate(node["right"])
+        operator = node["operator"]
+
+        if operator == ">":
+            return left > right
+        elif operator == "<":
+            return left < right
+        elif operator == ">=":
+            return left >= right
+        elif operator == "<=":
+            return left <= right
+        elif operator == "==":
+            return left == right
+        elif operator == "!=":
+            return left != right
+        else:
+            raise RuntimeError(f"Unsupported comparison operator: {operator} at line {node.get('line')}, column {node.get('column')}")
 
     def eval_number(self, node):
         """
@@ -347,7 +366,7 @@ class Interpreter:
     
     def eval_function_call(self, node):
         """
-        Evaluate a function call with support for multiple arities and guards.
+        Evaluate a function call with support for pattern matching, multiple arities, and guards.
         """
         name = node['name']
         if name not in self.functions:
@@ -357,23 +376,33 @@ class Interpreter:
         args = [self.evaluate(arg) for arg in node['arguments']]
         matching_function = None
 
-        # Match function arity and evaluate guard
         for func in self.functions[name]:
+            # Check arity
             if len(func['parameters']) != len(args):
                 continue
 
-            # Evaluate the guard, if present
-            if 'guard' in func and func['guard']:
-                # Create a local environment to evaluate the guard
-                local_env = self.environment.copy()
-                for param, arg in zip(func['parameters'], args):
-                    local_env[param] = arg
+            # Check parameter patterns
+            match = True
+            local_env = self.environment.copy()
+            for param, arg in zip(func['parameters'], args):
+                if param['type'] == 'identifier':
+                    local_env[param['value']] = arg  # Bind identifier
+                elif param['type'] == 'number' and arg != int(param['value']):
+                    match = False  # Pattern mismatch
+                    break
+                elif param['type'] == 'string' and arg != param['value']:
+                    match = False  # Pattern mismatch
+                    break
+            if not match:
+                continue
+
+            # Check guard
+            if func['guard']:
                 self.environment = local_env
                 try:
-                    if not self.evaluate(func['guard']):  # Guard condition fails
-                        continue
+                    if not self.evaluate(func['guard']):
+                        continue  # Guard condition failed
                 finally:
-                    # Restore the original environment
                     self.environment = {key: val for key, val in self.environment.items() if key not in local_env}
 
             # Found a matching function
@@ -381,14 +410,10 @@ class Interpreter:
             break
 
         if not matching_function:
-            raise RuntimeError(f"No matching function arity or guard for {name}({', '.join(map(str, args))}) at line {node['line']}, column {node['column']}")
+            raise RuntimeError(f"No matching function for {name}({', '.join(map(str, args))}) at line {node['line']}, column {node['column']}")
 
         # Execute the function body
-        local_env = self.environment.copy()
-        for param, arg in zip(matching_function['parameters'], args):
-            local_env[param] = arg
         self.environment = local_env
-
         try:
             result = None
             body = matching_function['body']
@@ -398,9 +423,8 @@ class Interpreter:
                 result = self.evaluate(stmt)  # Functions return the last evaluated expression
             return result
         finally:
-            # Restore the original environment
+            # Restore environment
             self.environment = {key: val for key, val in self.environment.items() if key not in local_env}
-
 
 class GENIAInterpreter:
     def __init__(self):
