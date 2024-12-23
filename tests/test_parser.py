@@ -81,8 +81,8 @@ def test_custom_function_call():
             'name': 'custom_function',
             'arguments': [
                 {'type': 'number', 'value': '42', 'line': 1, 'column': 17},
-                {'type': 'string', 'value': "'hello'", 'line': 1, 'column': 21},
-                {'type': 'identifier', 'value': 'another_var', 'line': 1, 'column': 30}
+                {'type': 'string', 'value': "hello", 'line': 1, 'column': 21},
+                {'type': 'identifier', 'value': 'another_var', 'line': 1, 'column': 28}
             ],
             'line': 1,
             'column': 1
@@ -92,9 +92,9 @@ def test_custom_function_call():
     assert ast == expected_ast
     
 def test_multi_arity_function_definition():
-    code = """fn add() -> 0
-    fn add(a) -> a
-    fn add(a, b) -> a + b
+    code = """fn add  () -> 0
+                    | (a) -> a
+                    | (a, b) -> a + b
     """
     lexer = Lexer(code)
     tokens = lexer.tokenize()
@@ -102,42 +102,46 @@ def test_multi_arity_function_definition():
     parser = Parser(tokens)
     ast = parser.parse()
 
-    expected_ast = [
+    expected_ast =  [
         {
             "type": "function_definition",
             "name": "add",
-            "parameters": [],
-            "guard": None,
-            "body": {"type": "number", "value": "0", "line": 1, "column": 13},
+            "definitions": [
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": {"type": "number", "value": "0", "line": 1, "column": 15},
+                    "line": 1,
+                    "column": 4,
+                },
+                {
+                    "parameters": [
+                        {"type": "identifier", "value": "a", "line": 2, "column": 24}
+                    ],
+                    "guard": None,
+                    "body": {"type": "identifier", "value": "a", "line": 2, "column": 30},
+                    "line": 1,
+                    "column": 4,
+                },
+                {
+                    "parameters": [
+                        {"type": "identifier", "value": "a", "line": 3, "column": 24},
+                        {"type": "identifier", "value": "b", "line": 3, "column": 27},
+                    ],
+                    "guard": None,
+                    "body": {
+                        "type": "operator",
+                        "operator": "+",
+                        "left": {"type": "identifier", "value": "a", "line": 3, "column": 33},
+                        "right": {"type": "identifier", "value": "b", "line": 3, "column": 37},
+                    },
+                    "line": 1,
+                    "column": 4,
+                },
+            ],
             "line": 1,
             "column": 4,
-        },
-        {
-            "type": "function_definition",
-            "name": "add",
-            "parameters": [{"type": "identifier", "value": "a"}],
-            "guard": None,
-            "body": {"type": "identifier", "value": "a", "line": 2, "column": 18},
-            "line": 2,
-            "column": 8,
-        },
-        {
-            "type": "function_definition",
-            "name": "add",
-            "parameters": [
-                {"type": "identifier", "value": "a"},
-                {"type": "identifier", "value": "b"},
-            ],
-            "guard": None,
-            "body": {
-                "type": "operator",
-                "operator": "+",
-                "left": {"type": "identifier", "value": "a", "line": 3, "column": 21},
-                "right": {"type": "identifier", "value": "b", "line": 3, "column": 25},
-            },
-            "line": 3,
-            "column": 8,
-        },
+        }
     ]
 
     assert ast == expected_ast
@@ -150,40 +154,250 @@ def test_function_with_guard():
     parser = Parser(tokens)
     ast = parser.parse()
 
-    expected_ast = [
+    expected_ast =  [
         {
             "type": "function_definition",
             "name": "fact",
-            "parameters": [{"type": "identifier", "value": "n"}],
-            "guard": {
-                "type": "comparison",
-                "operator": ">",
-                "left": {"type": "identifier", "value": "n", "line": 1, "column": 17},
-                "right": {"type": "number", "value": "1", "line": 1, "column": 21},
-            },
-            "body": {
-                "type": "operator",
-                "operator": "*",
-                "left": {"type": "identifier", "value": "n", "line": 1, "column": 26},
-                "right": {
-                    "type": "function_call",
-                    "name": "fact",
-                    "arguments": [
-                        {
-                            "type": "operator",
-                            "operator": "-",
-                            "left": {"type": "identifier", "value": "n", "line": 1, "column": 35},
-                            "right": {"type": "number", "value": "1", "line": 1, "column": 39},
-                        }
+            "definitions": [
+                {
+                    "parameters": [
+                        {"type": "identifier", "value": "n", "line": 1, "column": 9},
                     ],
+                    "guard": {
+                        "type": "comparison",
+                        "operator": ">",
+                        "left": {"type": "identifier", "value": "n", "line": 1, "column": 17},
+                        "right": {"type": "number", "value": "1", "line": 1, "column": 21},
+                    },
+                    "body": {
+                        "type": "operator",
+                        "operator": "*",
+                        "left": {"type": "identifier", "value": "n", "line": 1, "column": 26},
+                        "right": {
+                            "type": "function_call",
+                            "name": "fact",
+                            "arguments": [
+                                {
+                                    "type": "operator",
+                                    "operator": "-",
+                                    "left": {"type": "identifier", "value": "n", "line": 1, "column": 35},
+                                    "right": {"type": "number", "value": "1", "line": 1, "column": 39},
+                                }
+                            ],
+                            "line": 1,
+                            "column": 30,
+                        },
+                    },
                     "line": 1,
-                    "column": 30,
-                },
-            },
+                    "column": 4,
+                }
+            ],
             "line": 1,
             "column": 4,
         }
     ]
 
     assert ast == expected_ast
+
+def test_multiple_arities():
+    code = "fn foo() -> 0 | (_) -> 1;"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected_ast = [{
+        "type": "function_definition",
+        "name": "foo",
+        "definitions": [
+            {
+                "parameters": [],
+                "guard": None,
+                "body": {"type": "number", "value": "0", "line": 1, "column": 13},
+                "line": 1,
+                "column": 4
+            },
+            {
+                "parameters": [{"type": "identifier", "value": "_", "line": 1, "column": 18}],
+                "guard": None,
+                "body": {"type": "number", "value": "1", "line": 1, "column": 24},
+                "line": 1,
+                "column": 4
+            }
+        ],
+        "line": 1,
+        "column": 4
+    }]
+    assert ast == expected_ast
+    
+def test_named_function_definition():
+    code = "fn foo(x) -> x + 1 | (x, y) -> x * y"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected = [
+        {
+            "type": "function_definition",
+            "name": "foo",
+            "definitions": [
+                {
+                    "parameters": [{"type": "identifier", "value": "x", "line": 1, "column": 8}],
+                    "guard": None,
+                    "body": {
+                        "type": "operator",
+                        "operator": "+",
+                        "left": {"type": "identifier", "value": "x", "line": 1, "column": 14},
+                        "right": {"type": "number", "value": "1", "line": 1, "column": 18},
+                        # "line": 1,
+                        # "column": 14,
+                    },
+                    "line": 1,
+                    "column": 4,
+                },
+                {
+                    "parameters": [
+                        {"type": "identifier", "value": "x", "line": 1, "column": 23},
+                        {"type": "identifier", "value": "y", "line": 1, "column": 26},
+                    ],
+                    "guard": None,
+                    "body": {
+                        "type": "operator",
+                        "operator": "*",
+                        "left": {"type": "identifier", "value": "x", "line": 1, "column": 32},
+                        "right": {"type": "identifier", "value": "y", "line": 1, "column": 36},
+                        # "line": 1,
+                        # "column": 32,
+                    },
+                    "line": 1,
+                    "column": 4,
+                },
+            ],
+            "line": 1,
+            "column": 4,
+        }
+    ]
+    assert ast == expected
+
+def test_anonymous_function_definition():
+    code = "fn () -> 0 | (_) -> 1"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected = [{
+        "type": "function_definition",
+        "name": None,
+        "definitions": [
+            {
+                "parameters": [],
+                "guard": None,
+                "body": {"type": "number", "value": "0", "line": 1, "column": 10},
+                "line": 1,
+                "column": 1,
+            },
+            {
+                "parameters": [{"type": "identifier", "value": "_", "line": 1, "column": 15}],
+                "guard": None,
+                "body": {"type": "number", "value": "1", "line": 1, "column": 21},
+                "line": 1,
+                "column": 1,
+            },
+        ],
+        "line": 1,
+        "column": 1,
+    }]
+    assert ast == expected
+    
+def test_named_function_with_parameters_line_column():
+    code = "fn foo(x, y) -> x + y"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    
+    expected = [{
+        "type": "function_definition",
+        "name": "foo",
+        "definitions": [
+            {
+                "parameters": [
+                    {"type": "identifier", "value": "x", "line": 1, "column": 8},
+                    {"type": "identifier", "value": "y", "line": 1, "column": 11},
+                ],
+                "guard": None,
+                "body": {
+                    "type": "operator",
+                    "operator": "+",
+                    "left": {"type": "identifier", "value": "x", "line": 1, "column": 17},
+                    "right": {"type": "identifier", "value": "y", "line": 1, "column": 21}
+                },
+                "line": 1,
+                "column": 4
+            }
+        ],
+        "line": 1,
+        "column": 4
+    }]
+
+    assert ast == expected
+    
+def test_anonymous_function_with_parameters_line_column():
+    code = "fn (_) -> 1"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    
+    expected = [{
+        "type": "function_definition",
+        "name": None,
+        "definitions": [
+            {
+                "parameters": [{"type": "identifier", "value": "_", "line": 1, "column": 5}],
+                "guard": None,
+                "body": {"type": "number", "value": "1", "line": 1, "column": 11},
+                "line": 1,
+                "column": 1,
+            }
+        ],
+        "line": 1,
+        "column": 1
+    }]
+
+    assert ast == expected
+
+def test_named_function_with_guard():
+    code = "fn foo(x) when x > 1 -> x * 2"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    
+    expected = [{
+        "type": "function_definition",
+        "name": "foo",
+        "definitions": [
+            {
+                "parameters": [{"type": "identifier", "value": "x", "line": 1, "column": 8}],
+                "guard": {
+                    "type": "comparison",
+                    "operator": ">",
+                    "left": {"type": "identifier", "value": "x", "line": 1, "column": 16},
+                    "right": {"type": "number", "value": "1", "line": 1, "column": 20},
+                },
+                "body": {
+                    "type": "operator",
+                    "operator": "*",
+                    "left": {"type": "identifier", "value": "x", "line": 1, "column": 25},
+                    "right": {"type": "number", "value": "2", "line": 1, "column": 29},
+                },
+                "line": 1,
+                "column": 4,
+            }
+        ],
+        "line": 1,
+        "column": 4,
+    }]
+    
+    assert ast == expected
 

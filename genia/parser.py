@@ -11,7 +11,9 @@ class Parser:
         statements = []
         while self.tokens:
             statement = self.statement()
-            if statement:
+            if isinstance(statement, list):
+                statements.extend(statement)
+            elif statement:
                 statements.append(statement)
             # Consume a semicolon if present
             if self.tokens and self.tokens[0][1] == ';':
@@ -25,34 +27,120 @@ class Parser:
 
         token_type, value, line, column = self.tokens[0]
 
-        # Handle function definitions
+        # Handle named function definitions
         if token_type == 'IDENTIFIER' and value == 'fn':
-            return self.function_definition()
+            # Peek the next token to determine if it's a named or anonymous function
+            next_token_type = self.peek_next_token_type()
+            if next_token_type == 'IDENTIFIER':
+                return self.named_function_definition()
+            elif next_token_type == 'PUNCTUATION' and self.tokens[1][1] == '(':
+                return self.anonymous_function_definition()
 
         # Handle assignments or expressions
-        if  token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER'}:
-            return self.expression()
+        if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER'}:
+            return self.assignment_or_expression()
 
         # Error for unknown statements
         context = ' '.join(token[1] for token in list(self.tokens)[:5])
         raise SyntaxError(f"Unknown statement at line {line}, column {column}: {value}. Context: {context}")
 
 
+
     def assignment_or_expression(self):
-        token_type, value, line, column = self.tokens.popleft()
+        token_type, identifier, line, column = self.tokens.popleft()
 
         if self.tokens and self.tokens[0][1] == '=':  # Assignment detected
-            self.tokens.popleft()  # Remove '=' token
-            expression = self.expression()
-            return {'type': 'assignment', 'identifier': value, 'value': expression, 'line': line, 'column': column}
+            self.tokens.popleft()  # Remove '=' token'
+            if self.tokens and self.tokens[0][1] == "fn":
+                value = self.anonymous_function_definition()
+            else:
+                value = expression = self.expression()
+            return {'type': 'assignment', 'identifier': identifier, 'value': value, 'line': line, 'column': column}
 
         elif self.tokens and self.tokens[0][1] == '(':  # Function call detected
-            return self.function_call(value, line, column)
+            return self.function_call(identifier, line, column)
 
         else:
-            raise SyntaxError(f"Unexpected token at line {line}, column {column}: {value}")
+             # Reinsert the token and parse as an expression
+            self.tokens.appendleft((token_type, identifier, line, column))
+            return self.expression()
 
-    def function_definition(self):
+    def named_function_definition(self):
+        token_type, fn_keyword, line, column = self.tokens.popleft()
+        if fn_keyword != "fn":
+            raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
+
+        # Parse the function name
+        token_type, name, line, column = self.tokens.popleft()
+        if token_type != "IDENTIFIER":
+            raise SyntaxError(f"Expected function name, found {name} at line {line}, column {column}.")
+
+        # Reuse existing function parsing logic (e.g., parameters, guard, body)
+        return self.function_definition_body(name, line, column)
+
+    def anonymous_function_definition(self):
+        token_type, fn_keyword, line, column = self.tokens.popleft()
+        if fn_keyword != "fn":
+            raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
+
+        return self.function_definition_body(None, line, column)  # Pass `None` for the function name
+
+    def function_definition_body(self, name, line, column):
+        definitions = []
+        while True:  # Parse each definition until no more `|`
+            # Parse parameters
+            if not self.tokens or self.tokens[0][1] != "(":
+                raise SyntaxError(f"Expected '(' after 'fn' at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume '('
+
+            parameters = []
+            while self.tokens and self.tokens[0][1] != ")":
+                token_type, param, param_line, param_col = self.tokens.popleft()
+                if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
+                    raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
+                if token_type != "PUNCTUATION":  # Add valid patterns
+                    parameters.append({"type": token_type.lower(), "value": param, "line": param_line, "column": param_col})
+            if not self.tokens or self.tokens[0][1] != ")":
+                raise SyntaxError(f"Unmatched '(' in function definition at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume ')'
+
+            # Parse optional guard (when clause)
+            guard = None
+            if self.tokens and self.tokens[0][1] == "when":
+                self.tokens.popleft()  # Consume 'when'
+                guard = self.expression()  # Parse the guard expression fully
+
+            # Parse return arrow and expression
+            if not self.tokens or self.tokens[0][1] != "->":
+                raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume '->'
+            body = self.expression()
+
+            # Append the definition
+            definitions.append({
+                "parameters": parameters,
+                "guard": guard,
+                "body": body,
+                "line": line,
+                "column": column,
+            })
+
+            # Check for the `|` operator
+            if not self.tokens or self.tokens[0][1] != "|":
+                break
+            self.tokens.popleft()  # Consume '|'
+
+        # Return a function definition
+        return {
+            "type": "function_definition", # if name else "anonymous_function",
+            "name": name,
+            "definitions": definitions,
+            "line": line,
+            "column": column,
+        }
+
+
+    def function_definition_old(self):
         token_type, fn_keyword, line, column = self.tokens.popleft()
         if fn_keyword != "fn":
             raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
@@ -61,43 +149,54 @@ class Parser:
         if token_type != "IDENTIFIER":
             raise SyntaxError(f"Expected function name, found {name} at line {line}, column {column}.")
 
-        # Parse parameters
-        if not self.tokens or self.tokens[0][1] != "(":
-            raise SyntaxError(f"Expected '(' after function name at line {line}, column {column}.")
-        self.tokens.popleft()  # Consume '('
+        definitions = []
 
-        parameters = []
-        while self.tokens and self.tokens[0][1] != ")":
-            token_type, param, param_line, param_col = self.tokens.popleft()
-            if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
-                raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
-            if token_type != "PUNCTUATION":  # Add valid patterns
-                parameters.append({"type": token_type.lower(), "value": param})
-        if not self.tokens or self.tokens[0][1] != ")":
-            raise SyntaxError(f"Unmatched '(' in function definition at line {line}, column {column}.")
-        self.tokens.popleft()  # Consume ')'
+        while True:
+            # Parse parameters
+            if not self.tokens or self.tokens[0][1] != "(":
+                raise SyntaxError(f"Expected '(' after function name at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume '('
 
-        # Parse optional guard (when clause)
-        guard = None
-        if self.tokens and self.tokens[0][1] == "when":
-            self.tokens.popleft()  # Consume 'when'
-            guard = self.expression()  # Parse the guard expression fully
+            parameters = []
+            while self.tokens and self.tokens[0][1] != ")":
+                token_type, param, param_line, param_col = self.tokens.popleft()
+                if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
+                    raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
+                if token_type != "PUNCTUATION":  # Add valid patterns
+                    parameters.append({"type": token_type.lower(), "value": param})
+            if not self.tokens or self.tokens[0][1] != ")":
+                raise SyntaxError(f"Unmatched '(' in function definition at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume ')'
 
-        # Parse return arrow and expression
-        if not self.tokens or self.tokens[0][1] != "->":
-            raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
-        self.tokens.popleft()  # Consume '->'
-        body = self.expression()
+            # Parse optional guard (when clause)
+            guard = None
+            if self.tokens and self.tokens[0][1] == "when":
+                self.tokens.popleft()  # Consume 'when'
+                guard = self.expression()  # Parse the guard expression fully
 
-        return {
-            "type": "function_definition",
-            "name": name,
-            "parameters": parameters,
-            "guard": guard,
-            "body": body,
-            "line": line,
-            "column": column,
-        }
+            # Parse return arrow and expression
+            if not self.tokens or self.tokens[0][1] != "->":
+                raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
+            self.tokens.popleft()  # Consume '->'
+            body = self.expression()
+
+            # Add this definition
+            definitions.append({
+                "type": "function_definition",
+                "name": name,
+                "parameters": parameters,
+                "guard": guard,
+                "body": body,
+                "line": line,
+                "column": column,
+            })
+
+            # Check if there is a pipe for another definition
+            if not self.tokens or self.tokens[0][1] != "|":
+                break
+            self.tokens.popleft()  # Consume '|'
+
+        return definitions
 
 
     def function_call(self, function_name, line, column):
@@ -204,3 +303,12 @@ class Parser:
             '!=': 2
         }
         return precedences.get(operator, 1)  # Default precedence is 1
+
+    def peek_next_token_type(self):
+        """
+        Peek at the type of the next token without consuming it.
+        Returns None if no tokens are left.
+        """
+        if self.tokens:
+            return self.tokens[1][0]  # Return the type of the next token
+        return None

@@ -1,60 +1,147 @@
 
 from functools import reduce
+import sys
 
+from genia.callable_function import CallableFunction
 from genia.lexer import Lexer
 from genia.parser import Parser
+
 
 class Interpreter:
     def __init__(self):
         self.environment = {}  # Stores variables and their values
         self.functions = {}    # Stores function definitions
+
+        self.stdin = None
+        self.stdout = None
+        self.stderr = None
+        
+        self.add_hosted_functions()
         self.reset_awk_variables()
+
+    def add_hosted_functions(self):
+        self.eval_function_definition( {
+            "type": "function_definition",
+            "name": "print",
+            "definitions" :[
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": self.write_to_stdout,
+                    "line": 0,
+                    "column": 0,
+                },
+                {
+                    "parameters": [{"type": "identifier", "value": "a", "line":0,"column": 0}],
+                    "guard": None,
+                    "body": self.write_to_stdout,
+                    "line": 0,
+                    "column": 0,
+                }
+                
+            ]
+        })
+
+    
+    def write_to_stdout(self, *args):
+        """
+        Prints arguments to the provided stdout stream.
+        """
+        if self.stdout:
+            print(*args, file=self.stdout)
+        else:
+            print(*args)
+            
+    def write_to_stderr(self, *args):
+        """
+        Prints arguments to the provided stderr stream.
+        """
+        if self.stderr:
+            print(*args, file=self.stderr)
+        else:
+            print(*args, file=sys.stderr)
 
     def reset_awk_variables(self):
         """
         Resets AWK-specific variables to their initial state.
         """
-        self.environment.update({
-            "NR": 0,  # Record number
-            "NF": 0,  # Number of fields
-            "$0": "",  # Entire record
-            "$ARGS": [],  # Arguments passed to the script
-        })
-        
-    def update_awk_variables(self, record):
+        self.environment.update(  # The block of code you provided is initializing and defining AWK-specific variables in the `Interpreter` class. Here's what each variable represents:
+            {
+                "NR": 0,  # Record number
+                "NF": 0,  # Number of fields
+                "$0": "",  # Entire record
+                "$ARGS": [],  # Arguments passed to the script
+            })
+
+    def update_awk_variables(self, record, line_number):
         """
         Updates AWK-specific variables based on the current record.
         """
-        self.environment["NR"] += 1
+        self.environment["NR"] = line_number
         self.environment["$0"] = record
         fields = record.split()  # Split record into fields by whitespace
         self.environment["NF"] = len(fields)
         for i, field in enumerate(fields, start=1):
             self.environment[f"${i}"] = field
+            self.environment['$NF'] = field
         # Clear any extra field variables from previous records
         for i in range(len(fields) + 1, self.environment.get("NF", 0) + 1):
             self.environment.pop(f"${i}", None)
-            
-    def execute(self, ast, args=None, awk_mode=False):
+
+    def execute(self, ast, args=None, awk_mode=False, stdin=None, stdout=None, stderr=None):
         """
-        Executes the given AST. Supports regular and AWK modes.
+        Executes the given AST.
+
+        Parameters:
+        - ast: The abstract syntax tree to execute.
+        - args: Command-line arguments.
+        - awk_mode: Whether to run in AWK mode.
+        - stdin, stdout, stderr: File-like streams for I/O.
         """
+        self.stdin = stdin or sys.stdin
+        self.stdout = stdout or sys.stdout
+        self.stderr = stderr or sys.stderr
         result = None
-        self.environment["$ARGS"] = args if args else []
 
         if awk_mode:
-            self.reset_awk_variables()
-            # Simulate reading records from input (replace with actual file/stdin in production)
-            for record in args:  # Assuming `args` contains lines of input
-                self.update_awk_variables(record)
-                for statement in ast:
-                    result = self.evaluate(statement)
+            result = self.execute_awk_mode(ast, stdin=self.stdin)
         else:
-            # Regular mode execution
+            result = self.execute_regular_mode(ast, args=args)
+            
+        return result
+    
+    def execute_awk_mode(self, ast, stdin):
+        """
+        Executes the AST in AWK mode, reading input from stdin and updating AWK variables.
+        """
+        self.reset_awk_variables()
+        result = None
+        line_number = 0  # Line counter for NR
+
+        for line in stdin:
+            line_number += 1
+            self.update_awk_variables(line, line_number)
             for statement in ast:
                 result = self.evaluate(statement)
-        return result
 
+        return result
+    
+    def execute_regular_mode(self, ast, args=None):
+        """
+        Executes the AST in regular mode, setting up arguments as special variables.
+        """
+        self.environment["$ARGS"] = args if args else []
+        for i, field in enumerate(self.environment["$ARGS"], start=1):
+            self.environment[f"${i}"] = field
+        self.environment["NF"] = len(self.environment["$ARGS"])
+        self.environment["$NF"] = self.environment.get(f"${self.environment['NF']}", None)
+        self.environment["NR"] = 0  # Not applicable in regular mode but consistent with AWK.
+
+        result = None
+        for statement in ast:
+            result = self.evaluate(statement)
+
+        return result
 
     def evaluate(self, node):
         """
@@ -66,7 +153,7 @@ class Interpreter:
         if not method:
             raise RuntimeError(f"Unsupported node type: {node['type']} at line {node.get('line')}, column {node.get('column')}")
         return method(node)
-    
+
     def eval_comparison(self, node):
         """
         Evaluate a comparison node.
@@ -95,6 +182,12 @@ class Interpreter:
         Evaluate a number node.
         """
         return int(node['value'])
+    
+    def eval_string(self, node):
+        """
+        Evaluate a string node.
+        """
+        return node['value']
 
     def eval_identifier(self, node):
         """
@@ -135,13 +228,23 @@ class Interpreter:
         """
         Store function definitions with support for multiple arities.
         """
-        name = node['name']
+        name = node['name'] if ('name' in node and node['name']) else f"anon_{id(node)}"
         if name not in self.functions:
-            self.functions[name] = []
-        self.functions[name].append(node)
-        return None
+            self.functions[name] = CallableFunction(name)
+        for definition in node['definitions']:
+            self.functions[name].add_definition(definition)
+        return self.functions[name]
     
     def eval_function_call(self, node):
+        name = node['name']
+                
+        if name not in self.functions and name not in self.environment:
+            raise RuntimeError(f"Undefined function: {name} at line {node['line']}, column {node['column']}")
+        func = self.functions[name] if not (name in self.environment and callable(self.environment[name])) else self.environment[name]
+        args = [self.evaluate(arg) for arg in node['arguments']]
+        return func(self, args, node_context=(node['line'], node['column']))
+    
+    def eval_function_call_old(self, node):
         """
         Evaluate a function call with support for pattern matching, multiple arities, and guards.
         """
@@ -180,14 +283,16 @@ class Interpreter:
                     if not self.evaluate(func['guard']):
                         continue  # Guard condition failed
                 finally:
-                    self.environment = {key: val for key, val in self.environment.items() if key not in local_env}
+                    self.environment = {
+                        key: val for key, val in self.environment.items() if key not in local_env}
 
             # Found a matching function
             matching_function = func
             break
 
         if not matching_function:
-            raise RuntimeError(f"No matching function for {name}({', '.join(map(str, args))}) at line {node['line']}, column {node['column']}")
+            raise RuntimeError(f"No matching function for {name}({', '.join(
+                map(str, args))}) at line {node['line']}, column {node['column']}")
 
         # Execute the function body
         self.environment = local_env
@@ -197,11 +302,14 @@ class Interpreter:
             if not isinstance(body, list):
                 body = [body]  # Wrap single expression in a list
             for stmt in body:
-                result = self.evaluate(stmt)  # Functions return the last evaluated expression
+                # Functions return the last evaluated expression
+                result = self.evaluate(stmt)
             return result
         finally:
             # Restore environment
-            self.environment = {key: val for key, val in self.environment.items() if key not in local_env}
+            self.environment = {
+                key: val for key, val in self.environment.items() if key not in local_env}
+
 
 class GENIAInterpreter:
     def __init__(self):
@@ -209,10 +317,29 @@ class GENIAInterpreter:
         self.parser = None
         self.interpreter = Interpreter()
 
-    def run(self, code, args=None, awk_mode=False):
+    def run(self, code, args=None, awk_mode=False, stdin=None, stdout=None, stderr=None):
+        """
+        Execute the given code.
+
+        Parameters:
+        - code (str): The script to execute.
+        - args (list): The command-line arguments.
+        - awk_mode (bool): Whether to run in AWK mode.
+        - stdin (file-like): Input stream (default: sys.stdin).
+        - stdout (file-like): Output stream (default: sys.stdout).
+        - stderr (file-like): Error stream (default: sys.stderr).
+
+        Returns:
+        - The result of the last expression executed or the result of END in AWK mode.
+        """
+        import sys
+        stdin = stdin or sys.stdin
+        stdout = stdout or sys.stdout
+        stderr = stderr or sys.stderr
+
         self.lexer = Lexer(code)
         tokens = self.lexer.tokenize()
-        print("Tokens:", tokens)
+        print("Tokens:", tokens, file=stderr)  # Debug output to stderr
         self.parser = Parser(tokens)
         ast = self.parser.parse()
-        return self.interpreter.execute(ast, args=args, awk_mode=awk_mode)
+        return self.interpreter.execute(ast, args=args, awk_mode=awk_mode, stdin=stdin, stdout=stdout, stderr=stderr)

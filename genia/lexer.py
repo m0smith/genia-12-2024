@@ -6,12 +6,13 @@ class Lexer:
         (r'#.*', 'COMMENT'),                          # Single-line hash comments
         (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
         (r'\d+', 'NUMBER'),                           # Numbers
-        (r'[$a-zA-Z_]\w*', 'IDENTIFIER'),              # General identifiers and keywords
+        (r'[$a-zA-Z_]\w*', 'IDENTIFIER'),             # General identifiers and keywords
         (r'->', 'ARROW'),                             # Function arrow
         (r'when', 'WHEN'),                            # 'when' keyword
         (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
         (r'[+\-*/=]', 'OPERATOR'),                    # Arithmetic operators
         (r'[(){};,]', 'PUNCTUATION'),                 # Punctuation
+        (r'\|', 'PIPE'),                              # Add token for the `|` operator
         (r'\".*?\"|\'.*?\'', 'STRING'),               # Strings
         (r'\s+', None),                               # Skip whitespace
     ]
@@ -31,6 +32,10 @@ class Lexer:
                 match = regex.match(self.code, pos)
                 if match:
                     match_text = match.group(0)
+                    if token_type == 'STRING':
+                        # Remove surrounding quotes from strings
+                        match_text = match_text[1:-1]
+
                     # Skip comments and whitespace
                     if token_type not in ('COMMENT', 'BLOCK_COMMENT', None):
                         tokens.append(

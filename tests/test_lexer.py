@@ -69,3 +69,47 @@ def test_identifier_with_dollar():
     ]
 
     assert tokens == expected_tokens
+
+def test_pipe_operator():
+    code = "fn foo() -> 0 | (_) -> 1;"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    expected_tokens = [
+        ('IDENTIFIER', 'fn', 1, 1),
+        ('IDENTIFIER', 'foo', 1, 4),
+        ('PUNCTUATION', '(', 1, 7),
+        ('PUNCTUATION', ')', 1, 8),
+        ('ARROW', '->', 1, 10),
+        ('NUMBER', '0', 1, 13),
+        ('PIPE', '|', 1, 15),
+        ('PUNCTUATION', '(', 1, 17),
+        ('IDENTIFIER', '_', 1, 18),
+        ('PUNCTUATION', ')', 1, 19),
+        ('ARROW', '->', 1, 21),
+        ('NUMBER', '1', 1, 24),
+        ('PUNCTUATION', ';', 1, 25),
+    ]
+    assert tokens == expected_tokens
+
+def test_lexer_pipe_and_anonymous_function():
+    code = "c = fn () -> 0 | (_) -> 1"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+
+    expected_tokens = [
+        ('IDENTIFIER', 'c', 1, 1), 
+        ('OPERATOR', '=', 1, 3),
+        ('IDENTIFIER', 'fn', 1, 5), 
+        ('PUNCTUATION', '(', 1, 8), 
+        ('PUNCTUATION', ')', 1, 9), 
+        ('ARROW', '->', 1, 11), 
+        ('NUMBER', '0', 1, 14),
+        ('PIPE', '|', 1, 16),
+        ('PUNCTUATION', '(', 1, 18),
+        ('IDENTIFIER', '_', 1, 19), 
+        ('PUNCTUATION', ')', 1, 20), 
+        ('ARROW', '->', 1, 22),
+        ('NUMBER', '1', 1, 25),
+    ]
+
+    assert tokens == expected_tokens
