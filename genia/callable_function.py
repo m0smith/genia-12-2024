@@ -20,7 +20,7 @@ class CallableFunction:
         
         # Combine closure context with the current interpreter environment
         combined_env = {**interpreter.environment, **self.closure_context}
-
+        previous_env = interpreter.environment
         for func in self.definitions:
             if len(func['parameters']) != len(args):
                 continue
@@ -46,7 +46,7 @@ class CallableFunction:
                     if not interpreter.evaluate(func['guard']):
                         continue
                 finally:
-                    interpreter.environment = {key: val for key, val in interpreter.environment.items() if key not in local_env}
+                    interpreter.environment = previous_env
 
             matching_function = func
             break
@@ -69,7 +69,7 @@ class CallableFunction:
                 # Otherwise, evaluate it as an AST
                 return interpreter.evaluate(body)
         finally:
-            interpreter.environment = {key: val for key, val in interpreter.environment.items() if key not in local_env}
+            interpreter.environment = previous_env
 
     def append(self, ast_node):
         """

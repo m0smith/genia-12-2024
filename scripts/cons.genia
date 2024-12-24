@@ -1,0 +1,20 @@
+fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+fn cons() -> fn () -> 0;
+
+fn car(c) when c() > 0 -> c(1)
+fn car(c) -> c
+
+fn cdr(c_cdr) when c_cdr() > 0 -> c_cdr(2)
+fn cdr(c_cdr) -> c_cdr
+
+fn cdar(c_cadr) -> car(cdr(c_cadr))
+
+c2 = cons(1,2)
+
+print("CAR ", car(c2))
+print("CDR ", cdr(c2))
+
+c3 = cons(11, cons(12, 13))
+
+print("CAR ", car(c3))
+print("CDR ", cdar(c3))
