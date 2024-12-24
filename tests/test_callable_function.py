@@ -11,6 +11,7 @@ class MockInterpreter:
     """A mock interpreter to simulate environment and evaluation for testing."""
     def __init__(self):
         self.environment = {}
+        self.trace = False
 
     def evaluate(self, node):
         # Simplified evaluation logic for testing

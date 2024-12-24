@@ -62,10 +62,7 @@ def test_run_with_custom_streams(interpreter):
     # Validate stdout contains the expected output
     assert stdout.getvalue() == "Hello, World!\n"
 
-    # Validate stderr contains the debug tokens
-    assert "Tokens:" in stderr.getvalue()
-
-
+    
 def test_multiple_arities(interpreter):
     code = """
     fn add() -> 0;
@@ -187,25 +184,127 @@ def test_interpreter_function_with_guard(interpreter):
     result = interpreter.run(code)
     assert 30 == result
 
-@pytest.mark.skip
-def test_interpreter_cons_lsit_reduce(interpreter):
+# @pytest.mark.skip
+def test_interpreter_cons_list_reduce(interpreter):
     code = """
-    fn cons() -> fn () -> 0;
+    trace()
     fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn () -> 0;
     
-    fn car(c) -> c
-    fn car(c) when c() > 0 -> c(1)
+    fn car(cc) when cc() > 0 -> cc(1)
+    fn car(cc) -> cc
     
-    fn cdr(c) -> c
-    fn cdr(c) when c() > 0 -> c(2)
+    fn cdr(cd) when cd() > 0 -> cd(2)
+    fn cdr(cd) -> cd
     
-    fn list(a,b,c) -> cons(a, cons(b, cons(c, cons())))
     
-    fn reduce(func, acc, lst) -> acc
-    fn reduce(func, acc, lst) when lst() > 0 -> reduce(func, func(acc, car(lst)), cdr(lst))
+    fn list(a1,b1,c1) -> cons(a1, cons(b1, cons(c1, cons())))
+        
+    fn reduce(func, accxx, lst1) when lst1() > 0 -> reduce(func, func(accxx, car(lst1)), cdr(lst1))
+    fn reduce(func, accx, lst2) -> accx
     
-    l = list(1,2,3)
+    fn add() -> 0 | (x,y) -> x + y
+    
+    lst = list(12,8,4)
+    printenv()
+    reduce(add, add(), lst)
+    
     
     """
     result = interpreter.run(code)
-    assert 30 == result
+    assert 24 == result
+    
+def test_interpreter_adder(interpreter):
+    code = """
+    fn add(x) -> fn (y) -> x  + y;
+    inc = add(1)
+    inc(42)
+    """
+    result = interpreter.run(code)
+    assert 43 == result
+    
+def test_interpreter_recursive(interpreter):
+    code = """
+    fn first(x) -> x
+    fn first(a, b) -> first(a)
+    first(5,7)
+    """
+    result = interpreter.run(code)
+    assert 5 == result
+
+
+def test_interpreter_recursive(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0
+    fn car(ca) when ca() > 0 -> ca(1)
+    fn cdr(cd) when cd() > 0 -> cd(2)
+    
+    fn reduce(func, accxxx, lst3) when accxxx >  10 -> "overflow"
+    fn reduce(func, accxx, lst1) when lst1() > 0 -> reduce(func, func(accxx, car(lst1)), cdr(lst1))
+    fn reduce(func, accx, lst2) when lst2() == 0-> accx
+    
+    fn add (x,y) -> x + y
+    c = cons(1,cons(2, cons()))
+    reduce(add, 0, c)
+    """
+    result = interpreter.run(code)
+    assert 3 == result
+    
+def test_interpreter_cons_flag(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    c = cons(1,2)
+    c()
+    
+    """
+    result = interpreter.run(code)
+    assert 1 == result
+
+def test_interpreter_cons_v1(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0
+    c = cons(42,99)
+    c(1)
+    
+    """
+    result = interpreter.run(code)
+    assert 42 == result
+    
+def test_interpreter_cons_v2(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0
+    c = cons(42,99)
+    c(2)
+    
+    """
+    result = interpreter.run(code)
+    assert 99 == result
+    
+def test_interpreter_cons__2_element_list__first(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0
+    
+    c = cons(42, cons(99, cons()))
+    c(1)
+    
+    """
+    result = interpreter.run(code)
+    assert 42 == result
+
+def test_interpreter_cons__2_element_list__second(interpreter):
+    code = """
+    trace()
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0 | (1) -> null | (2) -> null;
+    
+    c = cons(42, cons(99, cons()))
+    c2 = c(2)
+    c2(1)
+    
+    """
+    result = interpreter.run(code)
+    assert 99 == result

@@ -6,6 +6,7 @@ class Lexer:
         (r'#.*', 'COMMENT'),                          # Single-line hash comments
         (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
         (r'\d+', 'NUMBER'),                           # Numbers
+        (r'\b(?:fn|when)\b', 'KEYWORD'),              # Reserved keywords
         (r'[$a-zA-Z_]\w*', 'IDENTIFIER'),             # General identifiers and keywords
         (r'->', 'ARROW'),                             # Function arrow
         (r'when', 'WHEN'),                            # 'when' keyword

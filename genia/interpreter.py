@@ -11,6 +11,7 @@ class Interpreter:
     def __init__(self):
         self.environment = {}  # Stores variables and their values
         self.functions = {}    # Stores function definitions
+        self.trace = False
 
         self.stdin = None
         self.stdout = None
@@ -20,6 +21,7 @@ class Interpreter:
         self.reset_awk_variables()
 
     def add_hosted_functions(self):
+        
         self.eval_function_definition( {
             "type": "function_definition",
             "name": "print",
@@ -37,11 +39,50 @@ class Interpreter:
                     "body": self.write_to_stdout,
                     "line": 0,
                     "column": 0,
+                },
+                {
+                    "parameters": [
+                                {"type": "identifier", "value": "a", "line":0,"column": 0},
+                                {"type": "identifier", "value": "b", "line":0,"column": 0},
+                                ],
+                    "guard": None,
+                    "body": self.write_to_stdout,
+                    "line": 0,
+                    "column": 0,
                 }
                 
             ]
         })
+        
+        self.eval_function_definition( {
+            "type": "function_definition",
+            "name": "printenv",
+            "definitions": [
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": lambda : self.write_to_stderr(self.environment),
+                    "line": 0,
+                    "column": 0,
+                },
+            ]
+        })
+        self.eval_function_definition( {
+            "type": "function_definition",
+            "name": "trace",
+            "definitions": [
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": self.do_trace,
+                    "line": 0,
+                    "column": 0,
+                },
+            ]
+        })
 
+    def do_trace(self):
+        self.trace = True
     
     def write_to_stdout(self, *args):
         """
@@ -163,20 +204,22 @@ class Interpreter:
         operator = node["operator"]
 
         if operator == ">":
-            return left > right
+            rtnval = left > right
         elif operator == "<":
-            return left < right
+            rtnval = left < right
         elif operator == ">=":
-            return left >= right
+            rtnval = left >= right
         elif operator == "<=":
-            return left <= right
+            rtnval = left <= right
         elif operator == "==":
-            return left == right
+            rtnval = left == right
         elif operator == "!=":
-            return left != right
+            rtnval = left != right
         else:
             raise RuntimeError(f"Unsupported comparison operator: {operator} at line {node.get('line')}, column {node.get('column')}")
-
+        if self.trace:
+            self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
+        return rtnval
     def eval_number(self, node):
         """
         Evaluate a number node.
@@ -194,9 +237,9 @@ class Interpreter:
         Evaluate an identifier node.
         """
         name = node['value']
-        if name not in self.environment:
+        if name not in self.environment and name not in self.functions:
             raise RuntimeError(f"Undefined variable: {name} at line {node['line']}, column {node['column']}")
-        return self.environment[name]
+        return self.environment.get(name, self.functions.get(name))
 
     def eval_assignment(self, node):
         """
@@ -205,6 +248,8 @@ class Interpreter:
         name = node['identifier']
         value = self.evaluate(node['value'])
         self.environment[name] = value
+        if self.trace:
+            self.write_to_stderr(f"TRACE: {name} = {value}")
         return value
 
     def eval_operator(self, node):
@@ -215,25 +260,36 @@ class Interpreter:
         right = self.evaluate(node['right'])
         op = node['operator']
         if op == '+':
-            return left + right
+            rtnval =  left + right
         elif op == '-':
-            return left - right
+            rtnval =  left - right
         elif op == '*':
-            return left * right
+            rtnval =  left * right
         elif op == '/':
-            return left // right  # Integer division
+            rtnval =  left // right  # Integer division
+        if self.trace:
+            self.write_to_stderr(f"TRACE: {left} {op} {right} => {rtnval}")
+        return rtnval
         raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}")
 
     def eval_function_definition(self, node):
         """
         Store function definitions with support for multiple arities.
         """
-        name = node['name'] if ('name' in node and node['name']) else f"anon_{id(node)}"
-        if name not in self.functions:
-            self.functions[name] = CallableFunction(name)
+        # Named functions
+        if ('name' in node and node['name']):
+            name = node['name']
+            func = self.functions[name] if name in self.functions else  CallableFunction(name, closure_context=self.environment.copy())
+            self.functions[name] = func
+        else:
+            # Anonymous functions
+            name = f"anon_{id(node)}"
+            func = CallableFunction(name=name, closure_context=self.environment.copy())
         for definition in node['definitions']:
-            self.functions[name].add_definition(definition)
-        return self.functions[name]
+            func.add_definition(definition)
+        if self.trace:
+            self.write_to_stderr(f"TRACE: Function {name} defined")
+        return func
     
     def eval_function_call(self, node):
         name = node['name']
@@ -242,73 +298,78 @@ class Interpreter:
             raise RuntimeError(f"Undefined function: {name} at line {node['line']}, column {node['column']}")
         func = self.functions[name] if not (name in self.environment and callable(self.environment[name])) else self.environment[name]
         args = [self.evaluate(arg) for arg in node['arguments']]
-        return func(self, args, node_context=(node['line'], node['column']))
+        if self.trace:
+            self.write_to_stderr(f"TRACE: Calling {name}")
+        rtnval =  func(self, args, node_context=(node['line'], node['column']))
+        if self.trace:
+            self.write_to_stderr(f"TRACE: {name}({args}) => {rtnval}")
+        return rtnval
     
-    def eval_function_call_old(self, node):
-        """
-        Evaluate a function call with support for pattern matching, multiple arities, and guards.
-        """
-        name = node['name']
-        if name not in self.functions:
-            raise RuntimeError(f"Undefined function: {name} at line {node['line']}, column {node['column']}")
+    # def eval_function_call_old(self, node):
+    #     """
+    #     Evaluate a function call with support for pattern matching, multiple arities, and guards.
+    #     """
+    #     name = node['name']
+    #     if name not in self.functions:
+    #         raise RuntimeError(f"Undefined function: {name} at line {node['line']}, column {node['column']}")
 
-        # Evaluate arguments
-        args = [self.evaluate(arg) for arg in node['arguments']]
-        matching_function = None
+    #     # Evaluate arguments
+    #     args = [self.evaluate(arg) for arg in node['arguments']]
+    #     matching_function = None
 
-        for func in self.functions[name]:
-            # Check arity
-            if len(func['parameters']) != len(args):
-                continue
+    #     for func in self.functions[name]:
+    #         # Check arity
+    #         if len(func['parameters']) != len(args):
+    #             continue
 
-            # Check parameter patterns
-            match = True
-            local_env = self.environment.copy()
-            for param, arg in zip(func['parameters'], args):
-                if param['type'] == 'identifier':
-                    local_env[param['value']] = arg  # Bind identifier
-                elif param['type'] == 'number' and arg != int(param['value']):
-                    match = False  # Pattern mismatch
-                    break
-                elif param['type'] == 'string' and arg != param['value']:
-                    match = False  # Pattern mismatch
-                    break
-            if not match:
-                continue
+    #         # Check parameter patterns
+    #         match = True
+    #         local_env = self.environment.copy()
+    #         for param, arg in zip(func['parameters'], args):
+    #             if param['type'] == 'identifier':
+    #                 local_env[param['value']] = arg  # Bind identifier
+    #             elif param['type'] == 'number' and arg != int(param['value']):
+    #                 match = False  # Pattern mismatch
+    #                 break
+    #             elif param['type'] == 'string' and arg != param['value']:
+    #                 match = False  # Pattern mismatch
+    #                 break
+    #         if not match:
+    #             continue
 
-            # Check guard
-            if func['guard']:
-                self.environment = local_env
-                try:
-                    if not self.evaluate(func['guard']):
-                        continue  # Guard condition failed
-                finally:
-                    self.environment = {
-                        key: val for key, val in self.environment.items() if key not in local_env}
+    #         # Check guard
+    #         if func['guard']:
+    #             self.environment = local_env
+    #             try:
+    #                 if not self.evaluate(func['guard']):
+    #                     continue  # Guard condition failed
+    #             finally:
+    #                 self.environment = {
+    #                     key: val for key, val in self.environment.items() if key not in local_env}
 
-            # Found a matching function
-            matching_function = func
-            break
+    #         # Found a matching function
+    #         matching_function = func
+    #         break
 
-        if not matching_function:
-            raise RuntimeError(f"No matching function for {name}({', '.join(
-                map(str, args))}) at line {node['line']}, column {node['column']}")
+    #     if not matching_function:
+    #         raise RuntimeError(f"No matching function for {name}({', '.join(
+    #             map(str, args))}) at line {node['line']}, column {node['column']}")
 
-        # Execute the function body
-        self.environment = local_env
-        try:
-            result = None
-            body = matching_function['body']
-            if not isinstance(body, list):
-                body = [body]  # Wrap single expression in a list
-            for stmt in body:
-                # Functions return the last evaluated expression
-                result = self.evaluate(stmt)
-            return result
-        finally:
-            # Restore environment
-            self.environment = {
-                key: val for key, val in self.environment.items() if key not in local_env}
+    #     # Execute the function body
+    #     self.environment = local_env
+    #     try:
+    #         result = None
+    #         body = matching_function['body']
+    #         if not isinstance(body, list):
+    #             body = [body]  # Wrap single expression in a list
+    #         for stmt in body:
+    #             # Functions return the last evaluated expression
+    #             result = self.evaluate(stmt)
+    #         return result
+    #     finally:
+    #         # Restore environment
+    #         self.environment = {
+    #             key: val for key, val in self.environment.items() if key not in local_env}
 
 
 class GENIAInterpreter:
@@ -339,7 +400,7 @@ class GENIAInterpreter:
 
         self.lexer = Lexer(code)
         tokens = self.lexer.tokenize()
-        print("Tokens:", tokens, file=stderr)  # Debug output to stderr
+        # print("Tokens:", tokens, file=stderr)  # Debug output to stderr
         self.parser = Parser(tokens)
         ast = self.parser.parse()
         return self.interpreter.execute(ast, args=args, awk_mode=awk_mode, stdin=stdin, stdout=stdout, stderr=stderr)

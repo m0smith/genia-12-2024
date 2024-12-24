@@ -28,7 +28,7 @@ class Parser:
         token_type, value, line, column = self.tokens[0]
 
         # Handle named function definitions
-        if token_type == 'IDENTIFIER' and value == 'fn':
+        if token_type == 'KEYWORD' and value == 'fn':
             # Peek the next token to determine if it's a named or anonymous function
             next_token_type = self.peek_next_token_type()
             if next_token_type == 'IDENTIFIER':
@@ -61,7 +61,7 @@ class Parser:
             return self.function_call(identifier, line, column)
 
         else:
-             # Reinsert the token and parse as an expression
+            # Reinsert the token and parse as an expression
             self.tokens.appendleft((token_type, identifier, line, column))
             return self.expression()
 
@@ -140,65 +140,6 @@ class Parser:
         }
 
 
-    def function_definition_old(self):
-        token_type, fn_keyword, line, column = self.tokens.popleft()
-        if fn_keyword != "fn":
-            raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
-
-        token_type, name, line, column = self.tokens.popleft()
-        if token_type != "IDENTIFIER":
-            raise SyntaxError(f"Expected function name, found {name} at line {line}, column {column}.")
-
-        definitions = []
-
-        while True:
-            # Parse parameters
-            if not self.tokens or self.tokens[0][1] != "(":
-                raise SyntaxError(f"Expected '(' after function name at line {line}, column {column}.")
-            self.tokens.popleft()  # Consume '('
-
-            parameters = []
-            while self.tokens and self.tokens[0][1] != ")":
-                token_type, param, param_line, param_col = self.tokens.popleft()
-                if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
-                    raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
-                if token_type != "PUNCTUATION":  # Add valid patterns
-                    parameters.append({"type": token_type.lower(), "value": param})
-            if not self.tokens or self.tokens[0][1] != ")":
-                raise SyntaxError(f"Unmatched '(' in function definition at line {line}, column {column}.")
-            self.tokens.popleft()  # Consume ')'
-
-            # Parse optional guard (when clause)
-            guard = None
-            if self.tokens and self.tokens[0][1] == "when":
-                self.tokens.popleft()  # Consume 'when'
-                guard = self.expression()  # Parse the guard expression fully
-
-            # Parse return arrow and expression
-            if not self.tokens or self.tokens[0][1] != "->":
-                raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
-            self.tokens.popleft()  # Consume '->'
-            body = self.expression()
-
-            # Add this definition
-            definitions.append({
-                "type": "function_definition",
-                "name": name,
-                "parameters": parameters,
-                "guard": guard,
-                "body": body,
-                "line": line,
-                "column": column,
-            })
-
-            # Check if there is a pipe for another definition
-            if not self.tokens or self.tokens[0][1] != "|":
-                break
-            self.tokens.popleft()  # Consume '|'
-
-        return definitions
-
-
     def function_call(self, function_name, line, column):
         self.tokens.popleft()  # Consume '('
         arguments = []
@@ -274,7 +215,12 @@ class Parser:
 
             # Otherwise, it's a plain identifier
             return {'type': 'identifier', 'value': value, 'line': line, 'column': column}
-
+        # Handle anonymous function definitions
+        if token_type == 'KEYWORD' and value == 'fn':
+            # Reinsert the token and parse as an expression
+            self.tokens.appendleft((token_type, value, line, column))
+            return self.anonymous_function_definition()
+        
         if token_type == 'PUNCTUATION' and value == '(':
             expr = self.expression()
             if not self.tokens or self.tokens[0][1] != ')':

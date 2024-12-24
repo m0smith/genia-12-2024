@@ -1,24 +1,33 @@
 class CallableFunction:
-    def __init__(self, name):
+    def __init__(self, name, closure_context=None):
         self.name = name
         self.definitions = []
+        self.closure_context = closure_context or {}  # Captured variables
 
     def add_definition(self, definition):
         if 'guard' not in definition:
             definition['guard'] = None
         self.definitions.append(definition)
         return self
+    
+    def __repr__(self):
+        import json
+        return f"CallableFunction('{self.name}, {self.closure_context}')"
 
     def __call__(self, interpreter, args, node_context):
         matching_function = None
         local_env = {}
+        
+        # Combine closure context with the current interpreter environment
+        combined_env = {**interpreter.environment, **self.closure_context}
 
         for func in self.definitions:
             if len(func['parameters']) != len(args):
                 continue
-
+            trace_args = ""
             match = True
             for param, arg in zip(func['parameters'], args):
+                trace_args = f"{trace_args} {param['value']}={arg}"
                 if param['type'] == 'identifier':
                     local_env[param['value']] = arg
                 elif param['type'] == 'number' and arg != int(param['value']):
@@ -31,7 +40,8 @@ class CallableFunction:
                 continue
 
             if func['guard']:
-                interpreter.environment.update(local_env)
+                combined_env.update(local_env)
+                interpreter.environment = combined_env
                 try:
                     if not interpreter.evaluate(func['guard']):
                         continue
@@ -44,9 +54,14 @@ class CallableFunction:
         if not matching_function:
             raise RuntimeError(f"No matching function for {self.name} with arguments {args} at {node_context}")
 
-        interpreter.environment.update(local_env)
+        # Use the combined environment for body evaluation
+        combined_env.update(local_env)
+        interpreter.environment = combined_env
         try:
             body = matching_function['body']
+            if interpreter.trace:
+                interpreter.write_to_stderr(f"Executing {self.name} with  {trace_args} at {node_context} with body {body}")
+
             if callable(body):
                 # If body is a Python function, call it with args
                 return body(*args)

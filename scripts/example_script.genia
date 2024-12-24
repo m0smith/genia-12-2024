@@ -1,16 +1,16 @@
 // Example GENIA script
 
 // Calculate the sum of command-line arguments
-sum = reduce(+, 0, $ARGS);
-print("Sum of arguments: " + sum);
+# sum = reduce(+, 0, $ARGS);
+# print("Sum of arguments: " + sum);
 
 // Demonstrate context-aware variables
-print("Number of arguments: " + $NF);
-print("Arguments list: " + $ARGS);
+print("Number of arguments: " , $NF);
+print("Arguments list: " , $ARGS);
 
 // Simple recursive function to calculate factorial
 fn factorial(0) -> 1;
 fn factorial(n) when n > 0 -> n * factorial(n - 1);
 
 // Call the factorial function
-print("Factorial of 5: " + factorial(5));
+print("Factorial of 5: " , factorial(5));

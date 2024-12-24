@@ -75,7 +75,7 @@ def test_pipe_operator():
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     expected_tokens = [
-        ('IDENTIFIER', 'fn', 1, 1),
+        ('KEYWORD', 'fn', 1, 1),
         ('IDENTIFIER', 'foo', 1, 4),
         ('PUNCTUATION', '(', 1, 7),
         ('PUNCTUATION', ')', 1, 8),
@@ -99,7 +99,7 @@ def test_lexer_pipe_and_anonymous_function():
     expected_tokens = [
         ('IDENTIFIER', 'c', 1, 1), 
         ('OPERATOR', '=', 1, 3),
-        ('IDENTIFIER', 'fn', 1, 5), 
+        ('KEYWORD', 'fn', 1, 5), 
         ('PUNCTUATION', '(', 1, 8), 
         ('PUNCTUATION', ')', 1, 9), 
         ('ARROW', '->', 1, 11), 
@@ -111,5 +111,25 @@ def test_lexer_pipe_and_anonymous_function():
         ('ARROW', '->', 1, 22),
         ('NUMBER', '1', 1, 25),
     ]
+
+    assert tokens == expected_tokens
+
+def test_lexer_nested_function():
+    code = "fn cons() -> fn () -> 0"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+
+    expected_tokens = [
+    ("KEYWORD", "fn", 1, 1),
+    ("IDENTIFIER", "cons", 1, 4),
+    ("PUNCTUATION", "(", 1, 8),
+    ("PUNCTUATION", ")", 1, 9),
+    ("ARROW", "->", 1, 11),
+    ("KEYWORD", "fn", 1, 14),
+    ("PUNCTUATION", "(", 1, 17),
+    ("PUNCTUATION", ")", 1, 18),
+    ("ARROW", "->", 1, 20),
+    ("NUMBER", "0", 1, 23),
+]
 
     assert tokens == expected_tokens
