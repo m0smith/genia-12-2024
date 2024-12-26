@@ -133,3 +133,48 @@ def test_lexer_nested_function():
 ]
 
     assert tokens == expected_tokens
+
+def test_lexer_tokenizes_foreign_keyword_with_positions():
+    
+    code = "foreign fn print(a) -> ;"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    assert tokens == [
+        ("KEYWORD", "foreign", 1, 1),
+        ("KEYWORD", "fn", 1, 9),
+        ("IDENTIFIER", "print", 1, 12),
+        ("PUNCTUATION", "(", 1, 17),
+        ("IDENTIFIER", "a", 1, 18),
+        ("PUNCTUATION", ")", 1, 19),
+        ("ARROW", "->", 1, 21),
+        ("PUNCTUATION", ";", 1, 24),
+    ]
+
+def test_lexer_handles_multiple_lines():
+    code = "fn add(a, b) ->\n  a + b;"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    assert tokens == [
+        ("KEYWORD", "fn", 1, 1),
+        ("IDENTIFIER", "add", 1, 4),
+        ("PUNCTUATION", "(", 1, 7),
+        ("IDENTIFIER", "a", 1, 8),
+        ("PUNCTUATION", ",", 1, 9),
+        ("IDENTIFIER", "b", 1, 11),
+        ("PUNCTUATION", ")", 1, 12),
+        ("ARROW", "->", 1, 14),
+        # ("NEWLINE", "\n", 1, 16),
+        ("IDENTIFIER", "a", 2, 3),
+        ("OPERATOR", "+", 2, 5),
+        ("IDENTIFIER", "b", 2, 7),
+        ("PUNCTUATION", ";", 2, 8),
+    ]
+
+def test_lexer_raises_error_with_position():
+    code = "fn invalid $"
+    lexer = Lexer(code)
+    
+    try:
+        lexer.tokenize()
+    except ValueError as e:
+        assert str(e) == "Unexpected character at line 1, column 11: $"

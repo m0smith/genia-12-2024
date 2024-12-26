@@ -22,63 +22,35 @@ class Interpreter:
 
     def add_hosted_functions(self):
         
-        self.eval_function_definition( {
-            "type": "function_definition",
-            "name": "print",
-            "definitions" :[
-                {
-                    "parameters": [],
-                    "guard": None,
-                    "body": self.write_to_stdout,
-                    "line": 0,
-                    "column": 0,
-                },
-                {
-                    "parameters": [{"type": "identifier", "value": "a", "line":0,"column": 0}],
-                    "guard": None,
-                    "body": self.write_to_stdout,
-                    "line": 0,
-                    "column": 0,
-                },
-                {
-                    "parameters": [
-                                {"type": "identifier", "value": "a", "line":0,"column": 0},
-                                {"type": "identifier", "value": "b", "line":0,"column": 0},
-                                ],
-                    "guard": None,
-                    "body": self.write_to_stdout,
-                    "line": 0,
-                    "column": 0,
-                }
-                
-            ]
-        })
+        self.register_foreign_function( "print", self.write_to_stdout)
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg"])
+        self.register_foreign_function( "printenv", lambda : self.write_to_stderr(self.environment))
+        self.register_foreign_function( "trace", self.do_trace)
         
-        self.eval_function_definition( {
+
+    def register_foreign_function(self, name, function, parameters=None, guard=None, line=0, column=0):
+        """
+        Register a foreign function using the same structure as native functions
+        but with a 'foreign: True' flag.
+        """
+        if name in self.environment:
+            raise ValueError(f"Function '{name}' is already defined.")
+        
+        # Register the function as a foreign function definition
+        return self.eval_function_definition({
             "type": "function_definition",
-            "name": "printenv",
+            "name": name,
             "definitions": [
                 {
-                    "parameters": [],
-                    "guard": None,
-                    "body": lambda : self.write_to_stderr(self.environment),
-                    "line": 0,
-                    "column": 0,
-                },
-            ]
-        })
-        self.eval_function_definition( {
-            "type": "function_definition",
-            "name": "trace",
-            "definitions": [
-                {
-                    "parameters": [],
-                    "guard": None,
-                    "body": self.do_trace,
-                    "line": 0,
-                    "column": 0,
-                },
-            ]
+                    "parameters": [{"type": "identifier", "value": param} for param in (parameters or [])],
+                    "guard": guard,
+                    "body": function,  # Directly store the callable function
+                    "line": line,
+                    "column": column,
+                    "foreign": True,  # Flag indicating this is a foreign function
+                }
+            ],
+            
         })
 
     def do_trace(self):
@@ -276,6 +248,11 @@ class Interpreter:
         """
         Store function definitions with support for multiple arities.
         """
+        # Ensure foreign functions have valid callable bodies
+        for definition in node.get("definitions", []):
+            if definition.get("foreign", False) and not callable(definition["body"]):
+                raise ValueError(f"Foreign function definition '{name}' must have callable bodies.")  
+
         # Named functions
         if ('name' in node and node['name']):
             name = node['name']

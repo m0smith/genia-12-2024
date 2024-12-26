@@ -29,12 +29,21 @@ class Parser:
 
         # Handle named function definitions
         if token_type == 'KEYWORD' and value == 'fn':
+            is_foreign = False
+            if self.tokens[1][1] == 'foreign':
+                self.tokens.popleft()  # Consume 'fn'
+                self.tokens.popleft()  # Consume 'foreign'
+                is_foreign = True
+            else:
+                token_type, value, line, column = self.tokens.popleft() # Consume fn
+                
             # Peek the next token to determine if it's a named or anonymous function
-            next_token_type = self.peek_next_token_type()
+            next_token_type = self.tokens[0][0]
+            
             if next_token_type == 'IDENTIFIER':
-                return self.named_function_definition()
-            elif next_token_type == 'PUNCTUATION' and self.tokens[1][1] == '(':
-                return self.anonymous_function_definition()
+                return self.named_function_definition(is_foreign)
+            elif next_token_type == 'PUNCTUATION' and self.tokens[0][1] == '(':
+                return self.anonymous_function_definition(is_foreign=is_foreign, line=line, column=column)
 
         # Handle assignments or expressions
         if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER'}:
@@ -65,10 +74,16 @@ class Parser:
             self.tokens.appendleft((token_type, identifier, line, column))
             return self.expression()
 
-    def named_function_definition(self):
-        token_type, fn_keyword, line, column = self.tokens.popleft()
-        if fn_keyword != "fn":
-            raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
+    def named_function_definition(self, is_foreign=False):
+        # token_type, fn_keyword, line, column = self.tokens.popleft()
+        # if fn_keyword != "fn":
+        #     raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
+        
+        # # Check for `foreign` keyword
+        # is_foreign = False
+        # if self.tokens and self.tokens[0][1] == "foreign":
+        #     is_foreign = True
+        #     self.tokens.popleft()  # Consume `foreign`
 
         # Parse the function name
         token_type, name, line, column = self.tokens.popleft()
@@ -76,21 +91,22 @@ class Parser:
             raise SyntaxError(f"Expected function name, found {name} at line {line}, column {column}.")
 
         # Reuse existing function parsing logic (e.g., parameters, guard, body)
-        return self.function_definition_body(name, line, column)
+        return self.function_definition_body(name, line, column, is_foreign)
 
-    def anonymous_function_definition(self):
-        token_type, fn_keyword, line, column = self.tokens.popleft()
-        if fn_keyword != "fn":
-            raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
+    def anonymous_function_definition(self, line=0, column=0, is_foreign=False):
+        # token_type, fn_keyword, line, column = self.tokens.popleft()
+        if self.tokens[0][0] == 'KEYWORD' and self.tokens[0][1] == "fn":
+            # It is possible to get here while looking at the fn keyword
+            token_type, fn_keyword, line, column = self.tokens.popleft()
 
         return self.function_definition_body(None, line, column)  # Pass `None` for the function name
 
-    def function_definition_body(self, name, line, column):
+    def function_definition_body(self, name, line, column, is_foreign=False):
         definitions = []
         while True:  # Parse each definition until no more `|`
             # Parse parameters
             if not self.tokens or self.tokens[0][1] != "(":
-                raise SyntaxError(f"Expected '(' after 'fn' at line {line}, column {column}.")
+                raise SyntaxError(f"Expected '(' after 'fn' at line {line}, column {column}. Got {self.tokens[0][1]}")
             self.tokens.popleft()  # Consume '('
 
             parameters = []
@@ -114,16 +130,35 @@ class Parser:
             if not self.tokens or self.tokens[0][1] != "->":
                 raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
             self.tokens.popleft()  # Consume '->'
-            body = self.expression()
+            # Parse target for foreign functions or expression for normal functions
+            body = None
+            if is_foreign:
+                if not self.tokens or self.tokens[0][0] != "STRING":
+                    raise SyntaxError(f"Expected string target for foreign function '{name}' at line {line}, column {column}.")
+                target_type, body_string, target_line, target_column = self.tokens.popleft()
+                try:
+                    module_name, func_name = body_string.rsplit('.', 1)
+                    module = __import__(module_name)
+                    body = getattr(module, func_name)
+                    if not callable(body):
+                        raise ValueError(f"Target '{body_string}' is not callable.")
+                except Exception as e:
+                    raise SyntaxError(f"Invalid foreign function target '{body_string}' at line {line}, column {column}: {e}")
+            else:
+                body = self.expression()
 
             # Append the definition
-            definitions.append({
+            definition = {
                 "parameters": parameters,
                 "guard": guard,
                 "body": body,
                 "line": line,
                 "column": column,
-            })
+                "foreign": is_foreign,
+            }
+            if is_foreign:
+                definition['foreign'] = is_foreign
+            definitions.append(definition)
 
             # Check for the `|` operator
             if not self.tokens or self.tokens[0][1] != "|":

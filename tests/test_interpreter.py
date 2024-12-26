@@ -178,7 +178,7 @@ def test_interpreter_function_with_guard__bad_condition(interpreter):
 def test_interpreter_function_with_guard(interpreter):
     code = """
     fn foo(x) when x > 10 -> x * 2;
-  
+
     foo(15);
     """
     result = interpreter.run(code)
@@ -308,3 +308,11 @@ def test_interpreter_cons__2_element_list__second(interpreter):
     """
     result = interpreter.run(code)
     assert 99 == result
+    
+def test_interpreter___ffi_rem(interpreter):
+    code = """
+    fn foreign rem(x,y) -> "math.remainder"
+    rem(10,3)
+    """
+    result = interpreter.run(code)
+    assert 1 == result

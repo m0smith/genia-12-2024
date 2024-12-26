@@ -108,6 +108,7 @@ def test_multi_arity_function_definition():
             "name": "add",
             "definitions": [
                 {
+                    "foreign": False,
                     "parameters": [],
                     "guard": None,
                     "body": {"type": "number", "value": "0", "line": 1, "column": 15},
@@ -115,6 +116,7 @@ def test_multi_arity_function_definition():
                     "column": 4,
                 },
                 {
+                    "foreign": False,
                     "parameters": [
                         {"type": "identifier", "value": "a", "line": 2, "column": 24}
                     ],
@@ -124,6 +126,7 @@ def test_multi_arity_function_definition():
                     "column": 4,
                 },
                 {
+                    "foreign": False,
                     "parameters": [
                         {"type": "identifier", "value": "a", "line": 3, "column": 24},
                         {"type": "identifier", "value": "b", "line": 3, "column": 27},
@@ -160,6 +163,7 @@ def test_function_with_guard():
             "name": "fact",
             "definitions": [
                 {
+                    "foreign": False,
                     "parameters": [
                         {"type": "identifier", "value": "n", "line": 1, "column": 9},
                     ],
@@ -214,14 +218,16 @@ def test_multiple_arities():
                 "guard": None,
                 "body": {"type": "number", "value": "0", "line": 1, "column": 13},
                 "line": 1,
-                "column": 4
+                "column": 4,
+                "foreign": False,
             },
             {
                 "parameters": [{"type": "identifier", "value": "_", "line": 1, "column": 18}],
                 "guard": None,
                 "body": {"type": "number", "value": "1", "line": 1, "column": 24},
                 "line": 1,
-                "column": 4
+                "column": 4,
+                "foreign": False,
             }
         ],
         "line": 1,
@@ -253,6 +259,7 @@ def test_named_function_definition():
                     },
                     "line": 1,
                     "column": 4,
+                    "foreign": False,
                 },
                 {
                     "parameters": [
@@ -270,6 +277,7 @@ def test_named_function_definition():
                     },
                     "line": 1,
                     "column": 4,
+                    "foreign": False,
                 },
             ],
             "line": 1,
@@ -294,6 +302,7 @@ def test_anonymous_function_definition():
                 "body": {"type": "number", "value": "0", "line": 1, "column": 10},
                 "line": 1,
                 "column": 1,
+                "foreign": False,
             },
             {
                 "parameters": [{"type": "identifier", "value": "_", "line": 1, "column": 15}],
@@ -301,6 +310,7 @@ def test_anonymous_function_definition():
                 "body": {"type": "number", "value": "1", "line": 1, "column": 21},
                 "line": 1,
                 "column": 1,
+                "foreign": False,
             },
         ],
         "line": 1,
@@ -332,7 +342,8 @@ def test_named_function_with_parameters_line_column():
                     "right": {"type": "identifier", "value": "y", "line": 1, "column": 21}
                 },
                 "line": 1,
-                "column": 4
+                "column": 4,
+                "foreign": False,
             }
         ],
         "line": 1,
@@ -358,6 +369,7 @@ def test_anonymous_function_with_parameters_line_column():
                 "body": {"type": "number", "value": "1", "line": 1, "column": 11},
                 "line": 1,
                 "column": 1,
+                "foreign": False,
             }
         ],
         "line": 1,
@@ -393,6 +405,7 @@ def test_named_function_with_guard():
                 },
                 "line": 1,
                 "column": 4,
+                "foreign": False,
             }
         ],
         "line": 1,
@@ -401,3 +414,28 @@ def test_named_function_with_guard():
     
     assert ast == expected
 
+def test_ffi_simple():
+    code = 'fn foreign rem(x,y) -> "math.remainder"'
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    import math
+    expected = [{
+        'column': 12, 
+        'definitions': 
+            [{'body': math.remainder , 
+                'parameters': [
+                    {'column': 16, 'line': 1, 'type': 'identifier', 'value': 'x'},
+                    {'column': 18, 'line': 1, 'type': 'identifier', 'value': 'y'},
+                ],
+                'column': 12, 
+                'guard': None, 
+                'line': 1, 
+                'foreign': True,
+                'column': 12}], 
+        'line': 1, 
+        'name': 'rem',
+        'type': 'function_definition', 
+    }]
+    assert ast == expected

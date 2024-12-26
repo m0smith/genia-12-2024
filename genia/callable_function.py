@@ -62,8 +62,8 @@ class CallableFunction:
             if interpreter.trace:
                 interpreter.write_to_stderr(f"Executing {self.name} with  {trace_args} at {node_context} with body {body}")
 
-            if callable(body):
-                # If body is a Python function, call it with args
+            if matching_function.get("foreign", False):
+                # If body is a Foreign function, call it with args
                 return body(*args)
             else:
                 # Otherwise, evaluate it as an AST
