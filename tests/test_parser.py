@@ -415,25 +415,25 @@ def test_named_function_with_guard():
     assert ast == expected
 
 def test_ffi_simple():
-    code = 'fn foreign rem(x,y) -> "math.remainder"'
+    code = 'fn rem(x,y) -> foreign "math.remainder"'
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
     import math
     expected = [{
-        'column': 12, 
+        'column': 4, 
         'definitions': 
             [{'body': math.remainder , 
                 'parameters': [
-                    {'column': 16, 'line': 1, 'type': 'identifier', 'value': 'x'},
-                    {'column': 18, 'line': 1, 'type': 'identifier', 'value': 'y'},
+                    {'column': 8, 'line': 1, 'type': 'identifier', 'value': 'x'},
+                    {'column': 10, 'line': 1, 'type': 'identifier', 'value': 'y'},
                 ],
-                'column': 12, 
+                'column': 4, 
                 'guard': None, 
                 'line': 1, 
                 'foreign': True,
-                'column': 12}], 
+                'column': 4}], 
         'line': 1, 
         'name': 'rem',
         'type': 'function_definition', 

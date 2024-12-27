@@ -178,3 +178,23 @@ def test_lexer_raises_error_with_position():
         lexer.tokenize()
     except ValueError as e:
         assert str(e) == "Unexpected character at line 1, column 11: $"
+        
+def test_lexer__unicode_identifiers():
+    code = "fn example(xαβγ?, y*ζ) -> xαβγ? + y*ζ*"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    expected = [
+        ('KEYWORD', 'fn', 1, 1),    
+        ('IDENTIFIER', 'example', 1, 4),    
+        ('PUNCTUATION', '(', 1, 11),    
+        ('IDENTIFIER', 'xαβγ?', 1, 12),    
+        ('PUNCTUATION', ',', 1, 17),    
+        ('IDENTIFIER', 'y*ζ', 1, 19),    
+        ('PUNCTUATION', ')', 1, 22),    
+        ('ARROW', '->', 1, 24),    
+        ('IDENTIFIER', 'xαβγ?', 1, 27),    
+        ('OPERATOR', '+', 1, 33),    
+        ('IDENTIFIER', 'y*ζ*', 1, 35)    
+        ]
+
+    assert tokens == expected

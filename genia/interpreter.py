@@ -24,7 +24,9 @@ class Interpreter:
         
         self.register_foreign_function( "print", self.write_to_stdout)
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2"])
         self.register_foreign_function( "printenv", lambda : self.write_to_stderr(self.environment))
+        self.register_foreign_function( "printenv", lambda name: self.write_to_stderr(self.environment.get(name, self.functions.get(name, f"{name} not found"))), parameters=["name"])
         self.register_foreign_function( "trace", self.do_trace)
         
 

@@ -7,11 +7,11 @@ class Lexer:
         (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
         (r'\d+', 'NUMBER'),                           # Numbers
         (r'\b(?:fn|when|foreign)\b', 'KEYWORD'),       # Reserved keywords
-        (r'[$a-zA-Z_]\w*', 'IDENTIFIER'),             # General identifiers and keywords
+        (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),             # General identifiers and keywords
         (r'->', 'ARROW'),                             # Function arrow
         (r'when', 'WHEN'),                            # 'when' keyword
         (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
-        (r'[+\-*/=]', 'OPERATOR'),                    # Arithmetic operators
+        (r'(?<![\w*?])([+\-*/=<>!])(?![\w*?])', 'OPERATOR'),  # Arithmetic operators
         (r'[(){};,]', 'PUNCTUATION'),                 # Punctuation
         (r'\|', 'PIPE'),                              # Add token for the `|` operator
         (r'\".*?\"|\'.*?\'', 'STRING'),               # Strings
@@ -29,7 +29,7 @@ class Lexer:
         while pos < len(self.code):
             match = None
             for pattern, token_type in self.TOKENS:
-                regex = re.compile(pattern)
+                regex = re.compile(pattern, re.UNICODE)
                 match = regex.match(self.code, pos)
                 if match:
                     match_text = match.group(0)

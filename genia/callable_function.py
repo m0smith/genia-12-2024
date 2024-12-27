@@ -12,7 +12,7 @@ class CallableFunction:
     
     def __repr__(self):
         import json
-        return f"CallableFunction('{self.name}, {self.closure_context}')"
+        return f"CallableFunction('{self.name}, {self.closure_context}, {self.definitions}')"
 
     def __call__(self, interpreter, args, node_context):
         matching_function = None

@@ -298,7 +298,9 @@ def test_interpreter_cons__2_element_list__first(interpreter):
 def test_interpreter_cons__2_element_list__second(interpreter):
     code = """
     trace()
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons(a, b) -> (fn () -> 1 
+                       | (1) -> a 
+                       | (2) -> b)
     fn cons() -> fn() -> 0 | (1) -> null | (2) -> null;
     
     c = cons(42, cons(99, cons()))
@@ -311,8 +313,19 @@ def test_interpreter_cons__2_element_list__second(interpreter):
     
 def test_interpreter___ffi_rem(interpreter):
     code = """
-    fn foreign rem(x,y) -> "math.remainder"
+    fn rem(x,y) -> foreign "math.remainder"
     rem(10,3)
     """
     result = interpreter.run(code)
     assert 1 == result
+    
+def test_interpreter___ffi_rem2(interpreter):
+    code = """
+    fn rem
+        (x,y) -> foreign "math.remainder" 
+      | (x) -> (x) 
+      | () -> 0
+    rem(10)
+    """
+    result = interpreter.run(code)
+    assert 10 == result

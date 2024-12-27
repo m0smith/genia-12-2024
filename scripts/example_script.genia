@@ -14,3 +14,7 @@ fn factorial(n) when n > 0 -> n * factorial(n - 1);
 
 // Call the factorial function
 print("Factorial of 5: " , factorial(5));
+
+fn rem(x,y) -> foreign "math.remainder" | (x) -> x
+print("rem(10) = ", rem(10))
+printenv("rem")
