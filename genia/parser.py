@@ -185,7 +185,7 @@ class Parser:
         while self.tokens and self.tokens[0][0] in {'OPERATOR', 'COMPARATOR'}:
             operator_token = self.tokens[0]
             operator_precedence = self.get_precedence(operator_token[1])
-            print(f"DEBUG: expression operator_precedence={operator_precedence} precedence={precedence}")
+            # print(f"DEBUG: expression operator_precedence={operator_precedence} precedence={precedence}")
             if operator_precedence <= precedence:
                 break
 

@@ -25,6 +25,8 @@ class Interpreter:
         self.register_foreign_function( "print", self.write_to_stdout)
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4", "msg5"])
         self.register_foreign_function( "printenv", lambda : self.write_to_stderr(self.environment))
         self.register_foreign_function( "printenv", lambda name: self.write_to_stderr(self.environment.get(name, self.functions.get(name, f"{name} not found"))), parameters=["name"])
         self.register_foreign_function( "trace", self.do_trace)
@@ -132,12 +134,21 @@ class Interpreter:
         self.reset_awk_variables()
         result = None
         line_number = 0  # Line counter for NR
-
+        
+        began = False
         for line in stdin:
             line_number += 1
             self.update_awk_variables(line, line_number)
             for statement in ast:
+                if not began and "begin" in self.functions:
+                    begin_func = self.functions.get("begin")
+                    begin_func(self, [], node_context=(0,0))
+                    began = True
                 result = self.evaluate(statement)
+
+        end_func = self.functions.get("end")
+        if end_func:
+            end_func(self, [], node_context=(0,0))
 
         return result
     
@@ -212,7 +223,8 @@ class Interpreter:
         """
         name = node['value']
         if name not in self.environment and name not in self.functions:
-            raise RuntimeError(f"Undefined variable: {name} at line {node['line']}, column {node['column']}")
+            # raise RuntimeError(f"Undefined variable: {name} at line {node['line']}, column {node['column']}")
+            self.environment[name] = 0
         return self.environment.get(name, self.functions.get(name))
 
     def eval_assignment(self, node):
@@ -241,6 +253,9 @@ class Interpreter:
             rtnval =  left * right
         elif op == '/':
             rtnval =  left // right  # Integer division
+        elif op == '=':
+            self.environment[left] = right
+            rtnval = right
         if self.trace:
             self.write_to_stderr(f"TRACE: {left} {op} {right} => {rtnval}")
         return rtnval
