@@ -59,6 +59,7 @@ class Interpreter:
 
     def do_trace(self):
         self.trace = True
+        return self.trace
     
     def write_to_stdout(self, *args):
         """
@@ -77,6 +78,7 @@ class Interpreter:
             print(*args, file=self.stderr)
         else:
             print(*args, file=sys.stderr)
+        
 
     def reset_awk_variables(self):
         """
@@ -132,23 +134,32 @@ class Interpreter:
         Executes the AST in AWK mode, reading input from stdin and updating AWK variables.
         """
         self.reset_awk_variables()
+        # self.trace = True
         result = None
         line_number = 0  # Line counter for NR
         
-        began = False
+        body = []
+        for statement in ast:
+            if self.trace:
+                self.write_to_stderr(f"TRACE: AWK Statement {statement}")
+            if(statement['type'] == "function_definition") :
+                self.evaluate(statement)
+            else:
+                body.append(statement)
+
+        begin_func = self.functions.get("begin")
+        if begin_func:
+            result = begin_func(self, [], node_context=(0,0))
+
         for line in stdin:
             line_number += 1
             self.update_awk_variables(line, line_number)
-            for statement in ast:
-                if not began and "begin" in self.functions:
-                    begin_func = self.functions.get("begin")
-                    begin_func(self, [], node_context=(0,0))
-                    began = True
+            for statement in body:
                 result = self.evaluate(statement)
 
         end_func = self.functions.get("end")
         if end_func:
-            end_func(self, [], node_context=(0,0))
+            result = end_func(self, [], node_context=(0,0))
 
         return result
     
