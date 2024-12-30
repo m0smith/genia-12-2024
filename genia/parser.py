@@ -26,7 +26,11 @@ class Parser:
             return None
 
         token_type, value, line, column = self.tokens[0]
-
+        
+        # Handle list patterns
+        if token_type == 'PUNCTUATION' and value == '[':
+            return self.expression()
+        
         # Handle named function definitions
         if token_type == 'KEYWORD' and value == 'fn':
             # Peek the next token to determine if it's a named or anonymous function
@@ -181,6 +185,16 @@ class Parser:
 
     def expression(self, precedence=0):
         left = self.primary_expression()
+        
+        if self.tokens and self.tokens[0][1] == '..':
+            self.tokens.popleft()  # Consume `..`
+            end = self.primary_expression()  # Parse the end of the range
+            return {
+                'type': 'range',
+                'start': left,
+                'end': end
+            }
+        
         # print(f"DEBUG: expression {self.tokens[0]}")
         while self.tokens and self.tokens[0][0] in {'OPERATOR', 'COMPARATOR'}:
             operator_token = self.tokens[0]
@@ -254,11 +268,31 @@ class Parser:
                 raise SyntaxError(f"Unmatched '(' at line {line}, column {column}.")
             self.tokens.popleft()  # Consume ')'
             return expr
-
+        
+        if token_type == 'PUNCTUATION' and value == '[':
+            return self.parse_list()
+        
         raise SyntaxError(f"Unexpected token {value} at line {line}, column {column}")
 
 
-
+    def parse_list(self):
+        elements = []
+        while self.tokens and self.tokens[0][1] != ']':
+            if self.tokens[0][1] == '..':
+                _, _, line, column = self.tokens.popleft()  # Consume `..`
+                elements.append({'type': 'rest', 'value': 'rest', 'line': line, 'column': column})
+            else:
+                elements.append(self.expression())
+            if self.tokens and self.tokens[0][1] == ',':
+                self.tokens.popleft()  # Consume `,`
+        if not self.tokens or self.tokens[0][1] != ']':
+            raise SyntaxError(f"Unmatched `[` in list pattern, looking at {self.tokens}")
+        self.tokens.popleft()  # Consume `]`
+        return {
+            'type': 'list_pattern',
+            'elements': elements
+        }
+        
     def get_precedence(self, operator):
         """
         Return the precedence of an operator. Higher values indicate higher precedence.

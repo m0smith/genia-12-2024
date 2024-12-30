@@ -9,7 +9,14 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from genia.parser import Parser
 from genia.lexer import Lexer
 
-    
+def parse(code):
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+
+    parser = Parser(tokens)
+    ast = parser.parse()
+    return ast   
+
 def test_expression_parsing():
     code = "1 + 2 * 3"
     lexer = Lexer(code)
@@ -439,3 +446,45 @@ def test_ffi_simple():
         'type': 'function_definition', 
     }]
     assert ast == expected
+
+def test_range():
+    code = "1..10"
+    result = parse(code)
+    expected = [{
+        'type': 'range',
+        'start': {'type': 'number', 'value': '1', 'line': 1, 'column': 1},
+        'end': {'type': 'number', 'value': '10', 'line': 1, 'column': 4} 
+    }]
+    assert result == expected
+
+def test_list_destructuring():
+    code = "[first, ..rest]"
+    result = parse(code)
+    expected = [{
+        'type': 'list_pattern',
+        'elements': [
+            {'type': 'identifier', 'value': 'first', 'line': 1, 'column': 2},
+            {'type': 'rest', 'value': 'rest', 'line':1, 'column': 9},
+            {
+                'column': 11,
+                'line': 1,
+                'type': 'identifier',
+                'value': 'rest',
+            },
+        ]
+    }]
+    assert result == expected
+
+def test_list_with_start_and_end():
+    code = "[first, ..rest, last]"
+    result = parse(code)
+    expected = [{
+        'type': 'list_pattern',
+        'elements': [
+            {'type': 'identifier', 'value': 'first', 'line': 1, 'column': 2},
+            {'type': 'rest', 'value': 'rest', 'line': 1, 'column': 9},
+            {'type': 'identifier', 'value': 'rest', 'line': 1, 'column': 11},
+            {'type': 'identifier', 'value': 'last', 'line': 1, 'column': 17}
+        ]
+    }]
+    assert result == expected
