@@ -7,7 +7,11 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from genia.lexer import Lexer
 
-
+def tokenize(code):
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    return tokens
+    
 def test_single_line_comments():
     code = """// This is a comment
     valid_token = 123; // Another comment
@@ -197,4 +201,67 @@ def test_lexer__unicode_identifiers():
         ('IDENTIFIER', 'y*ζ*', 1, 35)    
         ]
 
+    assert tokens == expected
+    
+def test_basic_tokens():
+    code = "fn map (func, [first, ..rest]) -> [func(first), ..map(func, rest)];"
+    tokens = tokenize(code)
+    expected = [
+        ('KEYWORD', 'fn', 1, 1),
+        ('IDENTIFIER', 'map', 1, 4),
+        ('PUNCTUATION', '(', 1, 8),
+        ('IDENTIFIER', 'func', 1, 9),
+        ('PUNCTUATION', ',', 1, 13),
+        ('PUNCTUATION', '[', 1, 15),
+        ('IDENTIFIER', 'first', 1, 16),
+        ('PUNCTUATION', ',', 1, 21),
+        ('DOT_DOT', '..', 1, 23),
+        ('IDENTIFIER', 'rest', 1, 25),
+        ('PUNCTUATION', ']', 1, 29),
+        ('PUNCTUATION', ')', 1, 30),
+        ('ARROW', '->', 1, 32),
+        ('PUNCTUATION', '[', 1, 35),
+        ('IDENTIFIER', 'func', 1, 36),
+        ('PUNCTUATION', '(', 1, 40),
+        ('IDENTIFIER', 'first', 1, 41),
+        ('PUNCTUATION', ')', 1, 46),
+        ('PUNCTUATION', ',', 1, 47),
+        ('DOT_DOT', '..', 1, 49),
+        ('IDENTIFIER', 'map', 1, 51),
+        ('PUNCTUATION', '(', 1, 54),
+        ('IDENTIFIER', 'func', 1, 55),
+        ('PUNCTUATION', ',', 1, 59),
+        ('IDENTIFIER', 'rest', 1, 61),
+        ('PUNCTUATION', ')', 1, 65),
+        ('PUNCTUATION', ']', 1, 66),
+        ('PUNCTUATION', ';', 1, 67),
+    ]
+    assert tokens == expected
+
+def test_range():
+    code = "range = 1..10;"
+    tokens = tokenize(code)
+    expected = [
+        ('IDENTIFIER', 'range', 1, 1),
+        ('OPERATOR', '=', 1, 7),
+        ('NUMBER', '1', 1, 9),
+        ('DOT_DOT', '..', 1, 10),
+        ('NUMBER', '10', 1, 12),
+        ('PUNCTUATION', ';', 1, 14),
+    ]
+    assert tokens == expected
+
+def test_end_of_list():
+    code = "[first, ..rest, last]"
+    tokens = tokenize(code)
+    expected = [
+        ('PUNCTUATION', '[', 1, 1),
+        ('IDENTIFIER', 'first', 1, 2),
+        ('PUNCTUATION', ',', 1, 7),
+        ('DOT_DOT', '..', 1, 9),
+        ('IDENTIFIER', 'rest', 1, 11),
+        ('PUNCTUATION', ',', 1, 15),
+        ('IDENTIFIER', 'last', 1, 17),
+        ('PUNCTUATION', ']', 1, 21),
+    ]
     assert tokens == expected
