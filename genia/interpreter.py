@@ -216,6 +216,7 @@ class Interpreter:
         if self.trace:
             self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
         return rtnval
+    
     def eval_number(self, node):
         """
         Evaluate a number node.
@@ -228,6 +229,9 @@ class Interpreter:
         """
         return node['value']
 
+    def eval_list_pattern(self, node):
+        return [self.evaluate(element) for element in node['elements']]
+    
     def eval_identifier(self, node):
         """
         Evaluate an identifier node.
@@ -253,25 +257,59 @@ class Interpreter:
         """
         Evaluate an operator node.
         """
-        left = self.evaluate(node['left'])
-        right = self.evaluate(node['right'])
         op = node['operator']
-        if op == '+':
-            rtnval =  left + right
-        elif op == '-':
-            rtnval =  left - right
-        elif op == '*':
-            rtnval =  left * right
-        elif op == '/':
-            rtnval =  left // right  # Integer division
-        elif op == '=':
-            self.environment[left] = right
-            rtnval = right
+        right = self.evaluate(node['right'])
+        if op == '=':
+            if node['left']['type'] == 'list_pattern':
+                self.handle_list_pattern_assignment(node['left'], right)
+                rtnval = right
+            else:
+                left = self.evaluate(node['left'])
+                self.environment[left] = right
+                rtnval = right
+        else:        
+            left = self.evaluate(node['left'])
+            
+            
+            if op == '+':
+                rtnval =  left + right
+            elif op == '-':
+                rtnval =  left - right
+            elif op == '*':
+                rtnval =  left * right
+            elif op == '/':
+                rtnval =  left // right  # Integer division
         if self.trace:
             self.write_to_stderr(f"TRACE: {left} {op} {right} => {rtnval}")
         return rtnval
         raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}")
+    
+    def handle_list_pattern_assignment(self, pattern, value):
+        """
+        Handle destructuring assignment for list patterns.
+        """
+        if not isinstance(value, (list, range)):
+            raise RuntimeError("Right-hand side of destructuring assignment must be a list or range.")
+        value = list(value)  # Convert range to list if necessary
 
+        elements = pattern['elements']
+        if len(elements) > len(value):
+            raise RuntimeError("Not enough elements in the value to match the pattern.")
+
+        for i, element in enumerate(elements):
+            if element['type'] == 'rest':
+                self.environment[element['value']] = value[i:]
+            else:
+                self.environment[element['value']] = value[i]
+                
+    def eval_range(self, node):
+        start = int(node['start']['value'])
+        end = int(node['end']['value'])
+        if start <= end:
+            return list(range(start, end + 1))
+        else:
+            return list(range(start, end - 1, -1))
+    
     def eval_function_definition(self, node):
         """
         Store function definitions with support for multiple arities.

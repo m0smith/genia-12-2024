@@ -10,6 +10,64 @@ class CallableFunction:
         self.definitions.append(definition)
         return self
     
+    def matches(self, definition, args):
+        if len(definition['parameters']) != len(args):
+            return False
+        for param, arg in zip(definition['parameters'], args):
+            if not self.match_parameter(param, arg):
+                return False
+        return True
+    
+    def match_parameter(self, param, arg):
+        match param.get('type'):
+            case 'list_pattern':
+                return self.match_list_pattern(param, arg)
+            case 'identifier':
+                return True # Identifiers always match
+            case 'string':
+                return param['value'] == arg
+            case 'number':
+                return int(param['value']) == arg
+            case _:
+                raise ValueError(f"Unsupport parameter type: {param['type']}")
+            
+    def match_list_pattern(self, pattern, arg):
+        if not isinstance(arg, list):
+            return False
+        elements = pattern['elements']
+        if len(elements) == 0:  # Match an empty list
+            return len(arg) == 0
+        if len(elements) >= 2 and elements[-1]['type'] == 'rest':
+            # Match `[first, ..rest]`
+            return len(arg) >= len(elements) - 1
+        return len(arg) == len(elements)  # Exact length match
+    
+    def bind_parameters(self, definition, args):
+        local_env = {}
+        for param, arg in zip(definition['parameters'], args):
+            match param.get('type'):
+                case 'list_pattern':
+                    self.bind_list_pattern(param, arg, local_env)
+                case 'identifier':
+                    local_env[param['value']] = arg
+                case 'string':
+                    pass
+                case 'number':
+                    pass
+                case _:
+                    raise ValueError(f"Unsupport parameter type: {param['type']}")
+        return local_env
+
+    def bind_list_pattern(self, pattern, arg, local_env):
+        elements = pattern['elements']
+        if len(elements) == 0:  # Empty list
+            return
+        for i, element in enumerate(elements):
+            if element['type'] == 'rest':
+                local_env[element['value']] = arg[i:]
+            else:
+                local_env[element['value']] = arg[i]
+    
     def __repr__(self):
         import json
         return f"CallableFunction('{self.name}, {self.closure_context}, {self.definitions}')"
@@ -21,34 +79,36 @@ class CallableFunction:
         # Combine closure context with the current interpreter environment
         combined_env = {**interpreter.environment, **self.closure_context}
         previous_env = interpreter.environment
-        for func in self.definitions:
-            if len(func['parameters']) != len(args):
+        for definition in self.definitions:
+            if not self.matches(definition, args):
                 continue
-            trace_args = ""
-            match = True
-            for param, arg in zip(func['parameters'], args):
-                trace_args = f"{trace_args} {param['value']}={arg}"
-                if param['type'] == 'identifier':
-                    local_env[param['value']] = arg
-                elif param['type'] == 'number' and arg != int(param['value']):
-                    match = False
-                    break
-                elif param['type'] == 'string' and arg != param['value']:
-                    match = False
-                    break
-            if not match:
-                continue
+            local_env = self.bind_parameters(definition, args)
+            
+            # trace_args = ""
+            # match = True
+            # for param, arg in zip(definition['parameters'], args):
+            #     trace_args = f"{trace_args} {param['value']}={arg}"
+            #     if param['type'] == 'identifier':
+            #         local_env[param['value']] = arg
+            #     elif param['type'] == 'number' and arg != int(param['value']):
+            #         match = False
+            #         break
+            #     elif param['type'] == 'string' and arg != param['value']:
+            #         match = False
+            #         break
+            # if not match:
+            #     continue
 
-            if func['guard']:
+            if definition['guard']:
                 combined_env.update(local_env)
                 interpreter.environment = combined_env
                 try:
-                    if not interpreter.evaluate(func['guard']):
+                    if not interpreter.evaluate(definition['guard']):
                         continue
                 finally:
                     interpreter.environment = previous_env
 
-            matching_function = func
+            matching_function = definition
             break
 
         if not matching_function:
@@ -60,7 +120,7 @@ class CallableFunction:
         try:
             body = matching_function['body']
             if interpreter.trace:
-                interpreter.write_to_stderr(f"Executing {self.name} with  {trace_args} at {node_context} with body {body}")
+                interpreter.write_to_stderr(f"Executing {self.name} at {node_context} with body {body}")
 
             if matching_function.get("foreign", False):
                 # If body is a Foreign function, call it with args

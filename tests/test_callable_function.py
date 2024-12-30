@@ -115,3 +115,38 @@ def test_call_with_multiple_definitions():
 
     with pytest.raises(RuntimeError, match="No matching function"):
         func(interpreter, ["non_matching", "too many"], None)
+
+def test_empty_list_pattern():
+    func = CallableFunction("test")
+    func.add_definition({
+        "parameters": [{"type": "list_pattern", "elements": []}],
+        "body": {"type": "number", "value": "1"}
+    })
+    # interpreter = Interpreter()
+    assert func.matches(func.definitions[0], [[]])  # Matches an empty list
+    assert not func.matches(func.definitions[0], [[1]])  # Does not match a non-empty list
+    
+def test_non_empty_list_pattern():
+    func = CallableFunction("test")
+    func.add_definition({
+        "parameters": [{"type": "list_pattern", "elements": [
+            {"type": "identifier", "value": "first"},
+            {"type": "rest", "value": "rest"}
+        ]}],
+        "body": {"type": "number", "value": "1"}
+    })
+    # interpreter = Interpreter()
+    assert func.matches(func.definitions[0], [[1, 2, 3]])  # Matches a non-empty list
+    assert not func.matches(func.definitions[0], [[]])  # Does not match an empty list
+
+def test_parameter_binding():
+    func = CallableFunction("test")
+    func.add_definition({
+        "parameters": [{"type": "list_pattern", "elements": [
+            {"type": "identifier", "value": "first"},
+            {"type": "rest", "value": "rest"}
+        ]}],
+        "body": {"type": "number", "value": "1"}
+    })
+    local_env = func.bind_parameters(func.definitions[0], [[1, 2, 3]])
+    assert local_env == {"first": 1, "rest": [2, 3]}

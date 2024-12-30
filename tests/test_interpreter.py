@@ -329,3 +329,60 @@ def test_interpreter___ffi_rem2(interpreter):
     """
     result = interpreter.run(code)
     assert 10 == result
+
+def test_interpreter_range(interpreter):
+    code = "1..10"
+    result = interpreter.run(code)
+    assert list(result) == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    
+def test_interpreter_range_desc(interpreter):
+    code = "10..1"
+    result = interpreter.run(code)
+    assert list(result) == [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+    
+def test_interpreter_range_same(interpreter):
+    code = "10..10"
+    result = interpreter.run(code)
+    assert list(result) == [10]
+    
+def test_interpreter_pattern_match_empty_list(interpreter):
+    code = """
+        fn foo([]) -> 0 | ([a, ..r]) -> a
+        foo([])
+        """
+    result = interpreter.run(code)
+    assert result == 0
+    
+def test_interpreter_pattern_match_list_1_element(interpreter):
+    code = """
+        fn foo([]) -> 0 | ([a, ..r]) -> a
+        foo([1])
+        """
+    result = interpreter.run(code)
+    assert result == 1
+def test_interpreter_pattern_match_list_2_element(interpreter):
+    code = """
+        fn foo([]) -> 0 | ([a, ..r]) -> a
+        foo([29, 31])
+        """
+    result = interpreter.run(code)
+    assert result == 29
+    
+def test_interpreter_pattern_match_count_list(interpreter):
+    code = """
+        fn count  ([])       -> 0 
+           |      ([a, ..r]) -> 1 + count(r)
+        count(100..1)
+        """
+    result = interpreter.run(code)
+    assert result == 100
+    
+def test_interpreter_pattern_assignment(interpreter):
+    code = """
+        [a, b, c] = 10..14
+        sum = a + b + c
+        sum / 3
+        """
+    result = interpreter.run(code)
+    assert result == 11
+    

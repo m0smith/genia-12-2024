@@ -100,6 +100,9 @@ class Parser:
 
             parameters = []
             while self.tokens and self.tokens[0][1] != ")":
+                if self.tokens[0][1] == "[":
+                    parameters.append(self.parse_list_pattern())
+                    continue
                 token_type, param, param_line, param_col = self.tokens.popleft()
                 if token_type not in {"IDENTIFIER", "NUMBER", "STRING"} and param != ",":
                     raise SyntaxError(f"Expected parameter name, pattern, or ',', found {param} at line {param_line}, column {param_col}.")
@@ -169,6 +172,30 @@ class Parser:
             "line": line,
             "column": column,
         }
+
+    def parse_list_pattern(self):
+        self.tokens.popleft()  # Consume `[`
+        elements = []
+        while self.tokens and self.tokens[0][1] != "]":
+            if self.tokens[0][1] == "..":
+                self.tokens.popleft()  # Consume `..`
+                rest = self.tokens.popleft()
+                if rest[0] != "IDENTIFIER":
+                    raise SyntaxError(f"Expected identifier after '..' at line {rest[2]}.")
+                elements.append({"type": "rest", "value": rest[1]})
+            else:
+                token_type, value, line, column = self.tokens.popleft()
+                if token_type != "IDENTIFIER":
+                    raise SyntaxError(f"Expected identifier in list pattern at line {line}, column {column}.")
+                elements.append({"type": "identifier", "value": value, "line": line, "column": column})
+            if self.tokens and self.tokens[0][1] == ",":
+                self.tokens.popleft()  # Consume `,`
+
+        if not self.tokens or self.tokens[0][1] != "]":
+            raise SyntaxError("Unmatched '[' in list pattern.")
+        self.tokens.popleft()  # Consume `]`
+
+        return {"type": "list_pattern", "elements": elements}
 
 
     def function_call(self, function_name, line, column):
