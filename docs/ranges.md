@@ -31,8 +31,7 @@ start..end
          y = 5
          x..y
          ```
-     - **Expressions**: Any valid expression that evaluates to a numeric value.
-       - Example: `(1 + 2)..(10 - 3)`
+     
 
 2. **Inclusivity**:
    - Ranges in Genia are inclusive at both ends. For example, `1..3` represents `[1, 2, 3]`.
@@ -177,6 +176,9 @@ print(z)  // Output: [-3, -2, -1, 0, 1, 2]
 
 3. **Range Functions**:
    - Add utility functions like `range.length`, `range.contains(x)`, etc.
+
+4. **Expressions**: Any valid expression that evaluates to a numeric value.
+       - Example: `(1 + 2)..(10 - 3)`
 
 ---
 
