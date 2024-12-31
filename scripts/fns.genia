@@ -1,0 +1,33 @@
+fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
+fn reduce(_, acc, []) -> acc
+fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+
+fn map(f) -> fn(list) -> map(f, list)
+fn map(_, []) -> []
+fn map(func, list) -> reduce(fn (acc, el) -> [..acc, func(el)], [], list)
+
+fn filter(f) -> fn(list) -> filter(f, list)
+fn filter(_, []) -> []
+fn filter(pred, list) -> reduce(fn (acc, el) when pred(el) -> [..acc, el] | (acc, _) -> acc, [], list)
+
+fn reverse() -> fn(list) -> reverse(list)
+fn reverse([]) -> []
+fn reverse(list) -> reduce(fn (acc, el) -> [el, ..acc], [], list)
+
+fn compose(f) -> f
+fn compose(f, g) -> fn(x) -> f(g(x))
+fn compose(f, g, h) -> fn(x) -> f(g(h(x)))
+
+fn add(x, y) -> x + y
+fn double(x) -> x + x
+fn pos?(x) -> x > 0
+
+print("Sum of numbers from 1 to 3: ", reduce(add, 0 1..3))
+print("Double the numbers from 10 to 20: ", map(double, 10..20))
+print("Only the positive numbers from -10 to 10:", filter(pos?, -10..10))
+double_pos = compose(
+    reverse,
+    map(double),
+    filter(pos?)
+)
+print("Double and reverse the positive numbers from -10 to 10:" , double_pos(-10..10))

@@ -265,3 +265,29 @@ def test_end_of_list():
         ('PUNCTUATION', ']', 1, 21),
     ]
     assert tokens == expected
+    
+def test_parser_list_pattern_tokens():
+    code = ("fn foo([_, ..r]) -> [99, ..r]")
+    tokens = tokenize(code)
+
+    expected_tokens = [
+        ('KEYWORD', 'fn', 1, 1),
+        ('IDENTIFIER', 'foo', 1, 4),
+        ('PUNCTUATION', '(', 1, 7),
+        ('PUNCTUATION', '[', 1, 8),
+        ('IDENTIFIER', '_', 1, 9),
+        ('PUNCTUATION', ',', 1, 10),
+        ('DOT_DOT', '..', 1, 12),
+        ('IDENTIFIER', 'r', 1, 14),
+        ('PUNCTUATION', ']', 1, 15),
+        ('PUNCTUATION', ')', 1, 16),
+        ('ARROW', '->', 1, 18),
+        ('PUNCTUATION', '[', 1, 21),
+        ('NUMBER', '99', 1, 22),
+        ('PUNCTUATION', ',', 1, 24),
+        ('DOT_DOT', '..', 1, 26),
+        ('IDENTIFIER', 'r', 1, 28),
+        ('PUNCTUATION', ']', 1, 29),
+    ]
+
+    assert tokens == expected_tokens

@@ -306,8 +306,8 @@ class Parser:
         elements = []
         while self.tokens and self.tokens[0][1] != ']':
             if self.tokens[0][1] == '..':
-                _, _, line, column = self.tokens.popleft()  # Consume `..`
-                elements.append({'type': 'rest', 'value': 'rest', 'line': line, 'column': column})
+                rest_type, rest_name, line, column = self.tokens.popleft()  # Consume `..`
+                elements.append({'type': 'rest', 'value': "rest", 'line': line, 'column': column})
             else:
                 elements.append(self.expression())
             if self.tokens and self.tokens[0][1] == ',':

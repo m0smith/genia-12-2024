@@ -251,6 +251,26 @@ def test_interpreter_recursive(interpreter):
     result = interpreter.run(code)
     assert 3 == result
     
+def test_interpreter_compose(interpreter):
+    code = """
+    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    fn cons() -> fn() -> 0
+    fn car(ca) when ca() > 0 -> ca(1)
+    fn cdr(cd) when cd() > 0 -> cd(2)
+    
+    fn compose(f,g) -> fn (x) -> f(g(x))
+    
+    cdar = compose(car, cdr)
+    cddr = compose(cdr, cdr)
+    c = cons(1, cons(3,5))
+    c1 = cdar(c) 
+    c2 = cddr(c)
+    c1 * c2
+    
+    """
+    result = interpreter.run(code)
+    assert 15 == result
+    
 def test_interpreter_cons_flag(interpreter):
     code = """
     fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
@@ -385,4 +405,95 @@ def test_interpreter_pattern_assignment(interpreter):
         """
     result = interpreter.run(code)
     assert result == 11
+
+def test_interpreter_return_empty_list(interpreter):
+    code = """
+        fn foo() -> []
+        foo()
+        """
+    result = interpreter.run(code)
+    assert result == []
+
+def test_interpreter_return_list(interpreter):
+    code = """
+        fn foo(a,b,c) -> [a,b,c]
+        foo(1,2,3)
+        """
+    result = interpreter.run(code)
+    assert result == [1,2,3]
+
+def test_interpreter_return_rest(interpreter):
+    code = """
+        fn foo([_, ..r1]) -> r1
+        foo(2..5)
+        """
+    result = interpreter.run(code)
+    assert result == [3, 4, 5]
     
+def test_interpreter_return_rest2(interpreter):
+    code = """
+        fn foo([_, _, ..r1]) -> r1
+        foo(2..5)
+        """
+    result = interpreter.run(code)
+    assert result == [4, 5]
+    
+def test_interpreter_return_rest_expanded(interpreter):
+    code = """
+        
+        fn foo([_, ..r]) -> [99, ..r]
+        
+        foo(10..14)
+      
+        """
+    result = interpreter.run(code)
+    assert result == [99,11,12,13,14]
+
+def test_interpreter_map(interpreter):
+    code = """
+        fn map(_, []) -> []
+        fn map(f, [first, ..rest]) -> [f(first), ..map(f, rest)]
+        fn double(x) -> x + x
+        map(double, 1..10)
+        """
+    result = interpreter.run(code)
+    assert result == [2,4,6,8,10,12,14,16,18,20]
+    
+def test_interpreter_join_lists(interpreter):
+    code = """
+        [
+            ..1..3, 
+            ..4..6, 
+            ..7..9
+        ]
+        """
+    result = interpreter.run(code)
+    assert result == [1,2,3,4,5,6,7,8,9]
+def test_interpreter_nested_lists(interpreter):
+    code = """
+        [
+            1..3, 
+            4..6, 
+            9..7
+        ]
+        """
+    result = interpreter.run(code)
+    assert result == [
+        [1,2,3], 
+        [4,5,6], 
+        [9,8,7]]
+def test_interpreter_join_and_nested_lists(interpreter):
+    code = """
+        [
+            ..1..3, 
+            4..6, 
+            ..9..7
+        ]
+        """
+    result = interpreter.run(code)
+    assert result == [
+        1, 2, 3, 
+        [4,5,6], 
+        9, 8, 7
+    ]
+

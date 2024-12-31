@@ -7,7 +7,7 @@ class Lexer:
         (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
 
         (r'\.\.', 'DOT_DOT'),                         # `..` operator
-        (r'\d+', 'NUMBER'),                           # Numbers
+        (r'-?\d+', 'NUMBER'),                           # Numbers
         (r'\b(?:fn|when|foreign)\b', 'KEYWORD'),      # Reserved keywords
         (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),        # General identifiers and keywords
         (r'->', 'ARROW'),                             # Function arrow

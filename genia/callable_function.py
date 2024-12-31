@@ -65,8 +65,10 @@ class CallableFunction:
         for i, element in enumerate(elements):
             if element['type'] == 'rest':
                 local_env[element['value']] = arg[i:]
+                # print(f"TRACE: bind {element['value']} to {arg[i:]}")
             else:
                 local_env[element['value']] = arg[i]
+                # print(f"TRACE: bind {element['value']} to {arg[i]}")
     
     def __repr__(self):
         import json
@@ -124,10 +126,12 @@ class CallableFunction:
 
             if matching_function.get("foreign", False):
                 # If body is a Foreign function, call it with args
-                return body(*args)
+                result = body(*args)
             else:
                 # Otherwise, evaluate it as an AST
-                return interpreter.evaluate(body)
+                result = interpreter.evaluate(body)
+            
+            return result
         finally:
             interpreter.environment = previous_env
 

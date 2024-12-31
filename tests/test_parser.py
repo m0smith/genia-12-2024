@@ -488,3 +488,91 @@ def test_list_with_start_and_end():
         ]
     }]
     assert result == expected
+    
+def test_parser_dynamic_range():
+    code = """
+    start = 10
+    end = 15
+    start..end
+    """
+    result = parse(code)
+    expected = [
+       {
+           'column': 5,
+           'identifier': 'start',
+           'line': 2,
+           'type': 'assignment',
+           'value': {
+               'column': 13,
+               'line': 2,
+               'type': 'number',
+               'value': '10',
+           },
+       },
+       {
+           'column': 5,
+           'identifier': 'end',
+           'line': 3,
+           'type': 'assignment',
+           'value': {
+               'column': 11,
+               'line': 3,
+               'type': 'number',
+               'value': '15',
+           },
+       },
+       {
+           'end': {
+               'column': 12,
+               'line': 4,
+               'type': 'identifier',
+               'value': 'end',
+           },
+           'start': {
+               'column': 5,
+               'line': 4,
+               'type': 'identifier',
+               'value': 'start',
+           },
+           'type': 'range',
+       },
+   ]
+    assert result == expected
+
+def test_parser_list_pattern_ast():
+    code = "fn foo([_, ..r]) -> [99, ..r]"
+    ast = parse(code)
+
+    expected_ast = [{
+        "type": "function_definition",
+        "name": "foo",
+        "definitions": [
+            {
+                "parameters": [
+                    {
+                        "type": "list_pattern",
+                        "elements": [
+                            {"type": "identifier", "value": "_", "line": 1, "column":9},
+                            {"type": "rest", "value": "r"}
+                        ]
+                    }
+                ],
+                "body": {
+                    "type": "list_pattern",
+                    "elements": [
+                        {"type": "number", "value": "99", "line": 1, "column": 22},
+                        {"type": "rest", "value": "rest", "line": 1, "column": 26},
+                        {"type": "identifier", "value": "r", "line": 1, "column": 28}
+                    ]
+                },
+                "guard": None,
+                'foreign': False,
+                "line": 1,
+                "column": 4
+            }
+        ],
+        "line": 1,
+        "column": 4
+    }]
+
+    assert ast == expected_ast

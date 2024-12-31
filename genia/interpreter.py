@@ -230,7 +230,30 @@ class Interpreter:
         return node['value']
 
     def eval_list_pattern(self, node):
-        return [self.evaluate(element) for element in node['elements']]
+        """
+        Evaluate a list pattern. Handle `rest` nodes explicitly.
+        """
+        rtnval = []
+        iterator = iter(node['elements'])
+        for element in iterator:
+            if element['type'] == 'rest':
+                # Evaluate the next element dynamically for `rest`
+                next_element = next(iterator, None)
+                if not next_element:
+                    raise RuntimeError("Expected an expression after `..` in list pattern.")
+                rest_value = self.evaluate(next_element)
+                if not isinstance(rest_value, list):
+                    raise RuntimeError(f"Expected a list for `rest` but got {type(rest_value).__name__}")
+                rtnval.extend(rest_value)  # Expand the `rest` elements
+                if self.trace:
+                    self.write_to_stderr(f"TRACE: LIST_PATTERN REST: {rest_value} -> {rtnval}")
+            else:
+                val = self.evaluate(element)
+                rtnval.append(val)
+                if self.trace:
+                    self.write_to_stderr(f"TRACE: LIST_PATTERN: {val} -> {rtnval}")
+        return rtnval
+        # return [self.evaluate(element) for element in node['elements']]
     
     def eval_identifier(self, node):
         """
@@ -259,19 +282,25 @@ class Interpreter:
         """
         op = node['operator']
         right = self.evaluate(node['right'])
+        left_node = node['left']
         if op == '=':
-            if node['left']['type'] == 'list_pattern':
-                self.handle_list_pattern_assignment(node['left'], right)
+            if left_node['type'] == 'list_pattern':
+                self.handle_list_pattern_assignment(left_node, right)
                 rtnval = right
             else:
-                left = self.evaluate(node['left'])
-                self.environment[left] = right
+                # Direct assignment
+                self.environment[left_node['value']] = right
                 rtnval = right
         else:        
-            left = self.evaluate(node['left'])
+            left = self.evaluate(left_node)
             
-            
-            if op == '+':
+            if node['operator'] == '..':
+                # Handle list concatenation
+                if isinstance(left, (list, range)) and isinstance(right, (list, range)):
+                    rtnval = list(left) + list(right)  # Convert ranges to lists if necessary
+                else:
+                    raise RuntimeError("`..` operator can only be used between lists or ranges")
+            elif op == '+':
                 rtnval =  left + right
             elif op == '-':
                 rtnval =  left - right
@@ -279,10 +308,12 @@ class Interpreter:
                 rtnval =  left * right
             elif op == '/':
                 rtnval =  left // right  # Integer division
+            else:
+               raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}") 
         if self.trace:
-            self.write_to_stderr(f"TRACE: {left} {op} {right} => {rtnval}")
+            self.write_to_stderr(f"TRACE: OPERATOR {left} {op} {right} => {rtnval}")
         return rtnval
-        raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}")
+        
     
     def handle_list_pattern_assignment(self, pattern, value):
         """
@@ -303,8 +334,8 @@ class Interpreter:
                 self.environment[element['value']] = value[i]
                 
     def eval_range(self, node):
-        start = int(node['start']['value'])
-        end = int(node['end']['value'])
+        start = int(self.evaluate(node['start']))
+        end = int(self.evaluate(node['end']))
         if start <= end:
             return list(range(start, end + 1))
         else:
