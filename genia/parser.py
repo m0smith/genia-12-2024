@@ -290,16 +290,43 @@ class Parser:
             return self.anonymous_function_definition()
         
         if token_type == 'PUNCTUATION' and value == '(':
-            expr = self.expression()
-            if not self.tokens or self.tokens[0][1] != ')':
-                raise SyntaxError(f"Unmatched '(' at line {line}, column {column}.")
-            self.tokens.popleft()  # Consume ')'
-            return expr
+            # Peek ahead to determine if it's a single expression or multiple statements
+            grouped = self.parse_grouped_statements_or_expression()
+            return grouped
+            # expr = self.expression()
+            # if not self.tokens or self.tokens[0][1] != ')':
+            #     raise SyntaxError(f"Unmatched '(' at line {line}, column {column}.")
+            # self.tokens.popleft()  # Consume ')'
+            # return expr
         
         if token_type == 'PUNCTUATION' and value == '[':
             return self.parse_list()
         
         raise SyntaxError(f"Unexpected token {value} at line {line}, column {column}")
+    
+    def parse_grouped_statements_or_expression(self):
+        """
+        Parse content inside parentheses as either:
+        - A single grouped expression, or
+        - A grouped block of statements separated by semicolons.
+        """
+        statements = []
+        while self.tokens and self.tokens[0][1] != ")":
+            statement = self.expression()
+            statements.append(statement)
+            if self.tokens and self.tokens[0][1] == ";":
+                self.tokens.popleft()  # Consume ';'
+
+        if not self.tokens or self.tokens[0][1] != ")":
+            raise SyntaxError("Expected ')' to close grouping.")
+        self.tokens.popleft()  # Consume ')'
+
+        # Return a single expression if only one statement exists
+        if len(statements) == 1:
+            return statements[0]
+
+        # Otherwise, return a grouped statement block
+        return {"type": "group", "statements": statements}
 
 
     def parse_list(self):

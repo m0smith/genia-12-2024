@@ -1,3 +1,5 @@
+from genia.lexer import Lexer
+from genia.parser import Parser
 import pytest
 import sys
 from pathlib import Path
@@ -6,16 +8,14 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
-from genia.parser import Parser
-from genia.lexer import Lexer
-
 def parse(code):
     lexer = Lexer(code)
     tokens = lexer.tokenize()
 
     parser = Parser(tokens)
     ast = parser.parse()
-    return ast   
+    return ast
+
 
 def test_expression_parsing():
     code = "1 + 2 * 3"
@@ -40,7 +40,8 @@ def test_expression_parsing():
     ]
 
     assert ast == expected_ast
-    
+
+
 def test_function_call_in_expression():
     code = "n * fact(n - 1)"
     lexer = Lexer(code)
@@ -97,7 +98,8 @@ def test_custom_function_call():
     ]
 
     assert ast == expected_ast
-    
+
+
 def test_multi_arity_function_definition():
     code = """fn add  () -> 0
                     | (a) -> a
@@ -109,7 +111,7 @@ def test_multi_arity_function_definition():
     parser = Parser(tokens)
     ast = parser.parse()
 
-    expected_ast =  [
+    expected_ast = [
         {
             "type": "function_definition",
             "name": "add",
@@ -135,8 +137,10 @@ def test_multi_arity_function_definition():
                 {
                     "foreign": False,
                     "parameters": [
-                        {"type": "identifier", "value": "a", "line": 3, "column": 24},
-                        {"type": "identifier", "value": "b", "line": 3, "column": 27},
+                        {"type": "identifier", "value": "a",
+                            "line": 3, "column": 24},
+                        {"type": "identifier", "value": "b",
+                            "line": 3, "column": 27},
                     ],
                     "guard": None,
                     "body": {
@@ -156,6 +160,7 @@ def test_multi_arity_function_definition():
 
     assert ast == expected_ast
 
+
 def test_function_with_guard():
     code = "fn fact(n) when n > 1 -> n * fact(n - 1)"
     lexer = Lexer(code)
@@ -164,7 +169,7 @@ def test_function_with_guard():
     parser = Parser(tokens)
     ast = parser.parse()
 
-    expected_ast =  [
+    expected_ast = [
         {
             "type": "function_definition",
             "name": "fact",
@@ -210,6 +215,7 @@ def test_function_with_guard():
 
     assert ast == expected_ast
 
+
 def test_multiple_arities():
     code = "fn foo() -> 0 | (_) -> 1;"
     lexer = Lexer(code)
@@ -241,7 +247,8 @@ def test_multiple_arities():
         "column": 4
     }]
     assert ast == expected_ast
-    
+
+
 def test_named_function_definition():
     code = "fn foo(x) -> x + 1 | (x, y) -> x * y"
     lexer = Lexer(code)
@@ -270,8 +277,10 @@ def test_named_function_definition():
                 },
                 {
                     "parameters": [
-                        {"type": "identifier", "value": "x", "line": 1, "column": 23},
-                        {"type": "identifier", "value": "y", "line": 1, "column": 26},
+                        {"type": "identifier", "value": "x",
+                            "line": 1, "column": 23},
+                        {"type": "identifier", "value": "y",
+                            "line": 1, "column": 26},
                     ],
                     "guard": None,
                     "body": {
@@ -292,6 +301,7 @@ def test_named_function_definition():
         }
     ]
     assert ast == expected
+
 
 def test_anonymous_function_definition():
     code = "fn () -> 0 | (_) -> 1"
@@ -324,14 +334,15 @@ def test_anonymous_function_definition():
         "column": 1,
     }]
     assert ast == expected
-    
+
+
 def test_named_function_with_parameters_line_column():
     code = "fn foo(x, y) -> x + y"
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    
+
     expected = [{
         "type": "function_definition",
         "name": "foo",
@@ -358,14 +369,15 @@ def test_named_function_with_parameters_line_column():
     }]
 
     assert ast == expected
-    
+
+
 def test_anonymous_function_with_parameters_line_column():
     code = "fn (_) -> 1"
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    
+
     expected = [{
         "type": "function_definition",
         "name": None,
@@ -385,13 +397,14 @@ def test_anonymous_function_with_parameters_line_column():
 
     assert ast == expected
 
+
 def test_named_function_with_guard():
     code = "fn foo(x) when x > 1 -> x * 2"
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    
+
     expected = [{
         "type": "function_definition",
         "name": "foo",
@@ -418,8 +431,9 @@ def test_named_function_with_guard():
         "line": 1,
         "column": 4,
     }]
-    
+
     assert ast == expected
+
 
 def test_ffi_simple():
     code = 'fn rem(x,y) -> foreign "math.remainder"'
@@ -429,23 +443,24 @@ def test_ffi_simple():
     ast = parser.parse()
     import math
     expected = [{
-        'column': 4, 
-        'definitions': 
-            [{'body': math.remainder , 
+        'column': 4,
+        'definitions':
+            [{'body': math.remainder,
                 'parameters': [
                     {'column': 8, 'line': 1, 'type': 'identifier', 'value': 'x'},
                     {'column': 10, 'line': 1, 'type': 'identifier', 'value': 'y'},
                 ],
-                'column': 4, 
-                'guard': None, 
-                'line': 1, 
+                'column': 4,
+                'guard': None,
+                'line': 1,
                 'foreign': True,
-                'column': 4}], 
-        'line': 1, 
+                'column': 4}],
+        'line': 1,
         'name': 'rem',
-        'type': 'function_definition', 
+        'type': 'function_definition',
     }]
     assert ast == expected
+
 
 def test_range():
     code = "1..10"
@@ -453,9 +468,10 @@ def test_range():
     expected = [{
         'type': 'range',
         'start': {'type': 'number', 'value': '1', 'line': 1, 'column': 1},
-        'end': {'type': 'number', 'value': '10', 'line': 1, 'column': 4} 
+        'end': {'type': 'number', 'value': '10', 'line': 1, 'column': 4}
     }]
     assert result == expected
+
 
 def test_list_destructuring():
     code = "[first, ..rest]"
@@ -464,7 +480,7 @@ def test_list_destructuring():
         'type': 'list_pattern',
         'elements': [
             {'type': 'identifier', 'value': 'first', 'line': 1, 'column': 2},
-            {'type': 'rest', 'value': 'rest', 'line':1, 'column': 9},
+            {'type': 'rest', 'value': 'rest', 'line': 1, 'column': 9},
             {
                 'column': 11,
                 'line': 1,
@@ -474,6 +490,7 @@ def test_list_destructuring():
         ]
     }]
     assert result == expected
+
 
 def test_list_with_start_and_end():
     code = "[first, ..rest, last]"
@@ -488,7 +505,8 @@ def test_list_with_start_and_end():
         ]
     }]
     assert result == expected
-    
+
+
 def test_parser_dynamic_range():
     code = """
     start = 10
@@ -497,47 +515,48 @@ def test_parser_dynamic_range():
     """
     result = parse(code)
     expected = [
-       {
-           'column': 5,
-           'identifier': 'start',
-           'line': 2,
-           'type': 'assignment',
-           'value': {
-               'column': 13,
-               'line': 2,
-               'type': 'number',
-               'value': '10',
-           },
-       },
-       {
-           'column': 5,
-           'identifier': 'end',
-           'line': 3,
-           'type': 'assignment',
-           'value': {
-               'column': 11,
-               'line': 3,
-               'type': 'number',
-               'value': '15',
-           },
-       },
-       {
-           'end': {
-               'column': 12,
-               'line': 4,
-               'type': 'identifier',
-               'value': 'end',
-           },
-           'start': {
-               'column': 5,
-               'line': 4,
-               'type': 'identifier',
-               'value': 'start',
-           },
-           'type': 'range',
-       },
-   ]
+        {
+            'column': 5,
+            'identifier': 'start',
+            'line': 2,
+            'type': 'assignment',
+            'value': {
+                'column': 13,
+                'line': 2,
+                'type': 'number',
+                'value': '10',
+            },
+        },
+        {
+            'column': 5,
+            'identifier': 'end',
+            'line': 3,
+            'type': 'assignment',
+            'value': {
+                'column': 11,
+                'line': 3,
+                'type': 'number',
+                'value': '15',
+            },
+        },
+        {
+            'end': {
+                'column': 12,
+                'line': 4,
+                'type': 'identifier',
+                'value': 'end',
+            },
+            'start': {
+                'column': 5,
+                'line': 4,
+                'type': 'identifier',
+                'value': 'start',
+            },
+            'type': 'range',
+        },
+    ]
     assert result == expected
+
 
 def test_parser_list_pattern_ast():
     code = "fn foo([_, ..r]) -> [99, ..r]"
@@ -552,7 +571,8 @@ def test_parser_list_pattern_ast():
                     {
                         "type": "list_pattern",
                         "elements": [
-                            {"type": "identifier", "value": "_", "line": 1, "column":9},
+                            {"type": "identifier", "value": "_",
+                                "line": 1, "column": 9},
                             {"type": "rest", "value": "r"}
                         ]
                     }
@@ -574,5 +594,198 @@ def test_parser_list_pattern_ast():
         "line": 1,
         "column": 4
     }]
+
+    assert ast == expected_ast
+
+
+def test_parser_grouped_expression():
+    code = "fn foo() -> (a + b);"
+    # tokens = [
+    #     ('KEYWORD', 'fn', 1, 1),
+    #     ('IDENTIFIER', 'foo', 1, 4),
+    #     ('PUNCTUATION', '(', 1, 7),
+    #     ('PUNCTUATION', ')', 1, 8),
+    #     ('ARROW', '->', 1, 10),
+    #     ('PUNCTUATION', '(', 1, 13),
+    #     ('IDENTIFIER', 'a', 1, 14),
+    #     ('OPERATOR', '+', 1, 16),
+    #     ('IDENTIFIER', 'b', 1, 18),
+    #     ('PUNCTUATION', ')', 1, 19),
+    #     ('PUNCTUATION', ';', 1, 20),
+    # ]
+
+    ast = parse(code)
+
+    expected_ast = [
+        {
+            "type": "function_definition",
+            "name": "foo",
+            "definitions": [
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": {
+                        "type": "operator",
+                        "operator": "+",
+                        "left": {"type": "identifier", "value": "a", "line": 1, "column": 14},
+                        "right": {"type": "identifier", "value": "b", "line": 1, "column": 18},
+                    },
+                    "line": 1,
+                    "column": 4,
+                    'foreign': False,
+                }
+            ],
+            "line": 1,
+            "column": 4
+        }
+    ]
+
+    assert ast == expected_ast
+
+
+def test_parser_grouped_statements():
+    code = "fn bar() -> (a = 1; b = 2; a + b);"
+    # tokens = [
+    #     ('KEYWORD', 'fn', 1, 1),
+    #     ('IDENTIFIER', 'bar', 1, 4),
+    #     ('PUNCTUATION', '(', 1, 7),
+    #     ('PUNCTUATION', ')', 1, 8),
+    #     ('ARROW', '->', 1, 10),
+    #     ('PUNCTUATION', '(', 1, 13),
+    #     ('IDENTIFIER', 'a', 1, 14),
+    #     ('OPERATOR', '=', 1, 16),
+    #     ('NUMBER', '1', 1, 18),
+    #     ('PUNCTUATION', ';', 1, 19),
+    #     ('IDENTIFIER', 'b', 1, 21),
+    #     ('OPERATOR', '=', 1, 23),
+    #     ('NUMBER', '2', 1, 25),
+    #     ('PUNCTUATION', ';', 1, 26),
+    #     ('IDENTIFIER', 'a', 1, 28),
+    #     ('OPERATOR', '+', 1, 30),
+    #     ('IDENTIFIER', 'b', 1, 32),
+    #     ('PUNCTUATION', ')', 1, 33),
+    #     ('PUNCTUATION', ';', 1, 34),
+    # ]
+
+    ast = parse(code)
+
+    expected_ast = [
+        {'type': 'function_definition', 
+            'name': 'bar', 
+            'definitions': [
+                {
+                    'parameters': [], 
+                    'guard': None, 
+                    'foreign': False, 
+                    'body': {
+                        'type': 'group', 
+                        'statements': [
+                            {
+                                'type': 'operator', 
+                                'operator': '=', 
+                                
+                                'left': {'type': 'identifier', 'value': 'a', 'line': 1, 'column': 14}, 
+                                'right': {'type': 'number', 'value': '1', 'line': 1, 'column': 18}}, 
+                            {
+                                'type': 'operator', 'operator': '=', 
+                                'left': {'type': 'identifier', 'value': 'b', 'line': 1, 'column': 21}, 
+                                'right': {'type': 'number', 'value': '2', 'line': 1, 'column': 25}
+                            }, 
+                            {
+                                'type': 'operator', 'operator': '+', 
+                                'left': {'type': 'identifier', 'value': 'a', 'line': 1, 'column': 28}, 
+                                'right': {'type': 'identifier', 'value': 'b', 'line': 1, 'column': 32}}]}, 
+                    'line': 1, 
+                    'column': 4}], 
+            'line': 1, 
+            'column': 4}
+    ]
+
+    assert ast == expected_ast
+
+def test_parser_nested_grouped_statements():
+    code = "fn baz() -> (x = (y = 1; z = 2; y * z); x + 5);"
+    # tokens = [
+    #     ('KEYWORD', 'fn', 1, 1),
+    #     ('IDENTIFIER', 'baz', 1, 4),
+    #     ('PUNCTUATION', '(', 1, 7),
+    #     ('PUNCTUATION', ')', 1, 8),
+    #     ('ARROW', '->', 1, 10),
+    #     ('PUNCTUATION', '(', 1, 13),
+    #     ('IDENTIFIER', 'x', 1, 14),
+    #     ('OPERATOR', '=', 1, 16),
+    #     ('PUNCTUATION', '(', 1, 18),
+    #     ('IDENTIFIER', 'y', 1, 19),
+    #     ('OPERATOR', '=', 1, 21),
+    #     ('NUMBER', '1', 1, 23),
+    #     ('PUNCTUATION', ';', 1, 24),
+    #     ('IDENTIFIER', 'z', 1, 26),
+    #     ('OPERATOR', '=', 1, 28),
+    #     ('NUMBER', '2', 1, 30),
+    #     ('PUNCTUATION', ';', 1, 31),
+    #     ('IDENTIFIER', 'y', 1, 33),
+    #     ('OPERATOR', '*', 1, 35),
+    #     ('IDENTIFIER', 'z', 1, 37),
+    #     ('PUNCTUATION', ')', 1, 38),
+    #     ('PUNCTUATION', ';', 1, 39),
+    #     ('IDENTIFIER', 'x', 1, 41),
+    #     ('OPERATOR', '+', 1, 43),
+    #     ('NUMBER', '5', 1, 45),
+    #     ('PUNCTUATION', ')', 1, 46),
+    #     ('PUNCTUATION', ';', 1, 47),
+    # ]
+
+    ast = parse(code)
+
+    expected_ast = [
+        {
+            'type': 'function_definition', 
+            'name': 'baz', 
+            'definitions': [
+                {
+                    'parameters': [], 
+                    'guard': None, 
+                    'foreign': False, 
+                    'body': {
+                        'type': 'group', 
+                        'statements': [
+                            {
+                                'type': 'operator', 
+                                'operator': '=', 
+                                'left': {'type': 'identifier', 'value': 'x', 'line': 1, 'column': 14}, 
+                                'right': {
+                                    'type': 'group', 
+                                    'statements': [
+                                        {
+                                            'type': 'operator', 'operator': '=', 
+                                            'left': {'type': 'identifier', 'value': 'y', 'line': 1, 'column': 19}, 
+                                            'right': {'type': 'number', 'value': '1', 'line': 1, 'column': 23}
+                                        }, 
+                                        {
+                                            'type': 'operator', 'operator': '=', 
+                                            'left': {'type': 'identifier', 'value': 'z', 'line': 1, 'column': 26}, 
+                                            'right': {'type': 'number', 'value': '2', 'line': 1, 'column': 30}
+                                        }, 
+                                        {
+                                            'type': 'operator', 'operator': '*', 
+                                            'left': {'type': 'identifier', 'value': 'y', 'line': 1, 'column': 33}, 
+                                            'right': {'type': 'identifier', 'value': 'z', 'line': 1, 'column': 37}
+                                        }
+                                    ]
+                                }
+                            }, 
+                            {
+                                'type': 'operator', 'operator': '+', 
+                                'left': {'type': 'identifier', 'value': 'x', 'line': 1, 'column': 41}, 
+                                'right': {'type': 'number', 'value': '5', 'line': 1, 'column': 45}
+                            }
+                        ]
+                    }, 
+                    'line': 1, 'column': 4
+                }
+            ], 
+            'line': 1, 'column': 4
+        }
+    ]
 
     assert ast == expected_ast
