@@ -287,6 +287,16 @@ class Interpreter:
             self.write_to_stderr(f"TRACE: {name} = {value}")
         return value
 
+    def eval_group(self, node):
+        """
+        Evaluate a grouped statement block, executing each statement in order.
+        Return the result of the last statement.
+        """
+        result = None
+        for statement in node["statements"]:
+            result = self.evaluate(statement)
+        return result
+
     def eval_operator(self, node):
         """
         Evaluate an operator node.
