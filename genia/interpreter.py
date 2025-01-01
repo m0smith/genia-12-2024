@@ -133,7 +133,6 @@ class Interpreter:
         self.stdout = stdout or sys.stdout
         self.stderr = stderr or sys.stderr
         result = None
-        print(awk_mode)
         if awk_mode:
             result = self.execute_awk_mode(ast, stdin=self.stdin, split_mode=awk_mode)
         else:
@@ -169,9 +168,7 @@ class Interpreter:
             for statement in body:
                 result = self.evaluate(statement)
                 
-        self.write_to_stderr(self.environment)
         end_func = self.functions.get("end")
-        self.write_to_stderr(end_func)
         if end_func:
             result = end_func(self, [], node_context=(0,0))
 
@@ -315,7 +312,7 @@ class Interpreter:
                 else:
                     raise RuntimeError("`..` operator can only be used between lists or ranges")
             elif op == '+':
-                rtnval =  left + right
+                rtnval =  int(left) + int(right)
             elif op == '-':
                 rtnval =  left - right
             elif op == '*':
@@ -399,73 +396,6 @@ class Interpreter:
             self.write_to_stderr(f"TRACE: {name}({args}) => {rtnval}")
         return rtnval
     
-    # def eval_function_call_old(self, node):
-    #     """
-    #     Evaluate a function call with support for pattern matching, multiple arities, and guards.
-    #     """
-    #     name = node['name']
-    #     if name not in self.functions:
-    #         raise RuntimeError(f"Undefined function: {name} at line {node['line']}, column {node['column']}")
-
-    #     # Evaluate arguments
-    #     args = [self.evaluate(arg) for arg in node['arguments']]
-    #     matching_function = None
-
-    #     for func in self.functions[name]:
-    #         # Check arity
-    #         if len(func['parameters']) != len(args):
-    #             continue
-
-    #         # Check parameter patterns
-    #         match = True
-    #         local_env = self.environment.copy()
-    #         for param, arg in zip(func['parameters'], args):
-    #             if param['type'] == 'identifier':
-    #                 local_env[param['value']] = arg  # Bind identifier
-    #             elif param['type'] == 'number' and arg != int(param['value']):
-    #                 match = False  # Pattern mismatch
-    #                 break
-    #             elif param['type'] == 'string' and arg != param['value']:
-    #                 match = False  # Pattern mismatch
-    #                 break
-    #         if not match:
-    #             continue
-
-    #         # Check guard
-    #         if func['guard']:
-    #             self.environment = local_env
-    #             try:
-    #                 if not self.evaluate(func['guard']):
-    #                     continue  # Guard condition failed
-    #             finally:
-    #                 self.environment = {
-    #                     key: val for key, val in self.environment.items() if key not in local_env}
-
-    #         # Found a matching function
-    #         matching_function = func
-    #         break
-
-    #     if not matching_function:
-    #         raise RuntimeError(f"No matching function for {name}({', '.join(
-    #             map(str, args))}) at line {node['line']}, column {node['column']}")
-
-    #     # Execute the function body
-    #     self.environment = local_env
-    #     try:
-    #         result = None
-    #         body = matching_function['body']
-    #         if not isinstance(body, list):
-    #             body = [body]  # Wrap single expression in a list
-    #         for stmt in body:
-    #             # Functions return the last evaluated expression
-    #             result = self.evaluate(stmt)
-    #         return result
-    #     finally:
-    #         # Restore environment
-    #         self.environment = {
-    #             key: val for key, val in self.environment.items() if key not in local_env}
-
-
 class GENIAInterpreter:
     def __init__(self):
         self.lexer = None

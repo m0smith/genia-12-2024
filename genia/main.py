@@ -21,8 +21,6 @@ def main():
     awk_mode = args.awk  # None if not provided, or 'whitespace' if --awk is used without a value
     script_args = args.args
     
-    print(awk_mode)
-    
     try:
         with open(script_path, 'r') as file:
             code = file.read()
