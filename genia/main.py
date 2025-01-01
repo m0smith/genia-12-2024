@@ -1,17 +1,28 @@
 import sys
+import argparse
+
 from genia.interpreter import GENIAInterpreter
 
 
 def main():
-    if len(sys.argv) < 2 or '--help' in sys.argv:
-        print("Usage: genia <script_path> [arguments...] [--awk]")
-        print("  --help       Show this help message")
-        print("  --awk        Enable AWK-like processing mode")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(description="GENIA script interpreter")
+    parser.add_argument("script_path", type=str, help="Path to the GENIA script")
+    parser.add_argument(
+        "--awk",
+        nargs="?",
+        const="whitespace",  # Default value if --awk is specified without a value
+        help="Enable AWK-like processing mode with optional split mode (e.g., 'csv')",
+    )
+    parser.add_argument("args", nargs=argparse.REMAINDER, help="Additional arguments for the script")
 
-    script_path = sys.argv[1]
-    awk_mode = '--awk' in sys.argv
-
+    args = parser.parse_args()
+    # Extract arguments
+    script_path = args.script_path
+    awk_mode = args.awk  # None if not provided, or 'whitespace' if --awk is used without a value
+    script_args = args.args
+    
+    print(awk_mode)
+    
     try:
         with open(script_path, 'r') as file:
             code = file.read()

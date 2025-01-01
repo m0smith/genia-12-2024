@@ -26,7 +26,7 @@ def test_awk_mode_nf():
     stderr = io.StringIO()
 
     interpreter = GENIAInterpreter()
-    interpreter.run(code, awk_mode=True, stdin=stdin, stdout=stdout, stderr=stderr)
+    interpreter.run(code, awk_mode="whitespace", stdin=stdin, stdout=stdout, stderr=stderr)
 
     assert stdout.getvalue() == expected_output
 
@@ -109,7 +109,7 @@ def test_awk_field_parsing(interpreter):
     stderr = io.StringIO()
 
     interpreter = GENIAInterpreter()
-    interpreter.run(code, awk_mode=True, stdin=stdin, stdout=stdout, stderr=stderr)
+    interpreter.run(code, awk_mode="whitespace", stdin=stdin, stdout=stdout, stderr=stderr)
 
 
     # Define the expected outputs

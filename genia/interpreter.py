@@ -25,6 +25,7 @@ class Interpreter:
         self.register_foreign_function( "print", self.write_to_stdout)
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4", "msg5"])
         self.register_foreign_function( "printenv", lambda : self.write_to_stderr(self.environment))
@@ -92,22 +93,33 @@ class Interpreter:
                 "$ARGS": [],  # Arguments passed to the script
             })
 
-    def update_awk_variables(self, record, line_number):
+    def update_awk_variables(self, record, line_number, split_mode="whitespace"):
         """
         Updates AWK-specific variables based on the current record.
         """
-        self.environment["NR"] = line_number
-        self.environment["$0"] = record
-        fields = record.split()  # Split record into fields by whitespace
-        self.environment["NF"] = len(fields)
-        for i, field in enumerate(fields, start=1):
-            self.environment[f"${i}"] = field
-            self.environment['$NF'] = field
+        
+        if split_mode == "csv":
+            import csv
+            fields = next(csv.reader([record]))
+        elif split_mode == "whitespace":
+            fields = record.split()
+        else:
+            raise ValueError(f"Unsupported split mode: {split_mode}")
+        if self.trace:
+            self.write_to_stderr(f"TRACE AWK: Split Mode: {split_mode} Record: {record}, Fields: {fields}, Line Number: {line_number}")
+            
         # Clear any extra field variables from previous records
         for i in range(len(fields) + 1, self.environment.get("NF", 0) + 1):
             self.environment.pop(f"${i}", None)
-
-    def execute(self, ast, args=None, awk_mode=False, stdin=None, stdout=None, stderr=None):
+            
+        self.environment["NR"] = line_number
+        self.environment["$0"] = record
+        self.environment["NF"] = len(fields)
+        for i, field in enumerate(fields, start=1):
+            self.environment[f"${i}"] = field
+        self.environment["$NF"] = fields[-1] if fields else ""
+        
+    def execute(self, ast, args=None, awk_mode=None, stdin=None, stdout=None, stderr=None):
         """
         Executes the given AST.
 
@@ -121,15 +133,15 @@ class Interpreter:
         self.stdout = stdout or sys.stdout
         self.stderr = stderr or sys.stderr
         result = None
-
+        print(awk_mode)
         if awk_mode:
-            result = self.execute_awk_mode(ast, stdin=self.stdin)
+            result = self.execute_awk_mode(ast, stdin=self.stdin, split_mode=awk_mode)
         else:
             result = self.execute_regular_mode(ast, args=args)
             
         return result
     
-    def execute_awk_mode(self, ast, stdin):
+    def execute_awk_mode(self, ast, stdin, split_mode="whitespace"):
         """
         Executes the AST in AWK mode, reading input from stdin and updating AWK variables.
         """
@@ -153,11 +165,13 @@ class Interpreter:
 
         for line in stdin:
             line_number += 1
-            self.update_awk_variables(line, line_number)
+            self.update_awk_variables(line, line_number, split_mode)
             for statement in body:
                 result = self.evaluate(statement)
-
+                
+        self.write_to_stderr(self.environment)
         end_func = self.functions.get("end")
+        self.write_to_stderr(end_func)
         if end_func:
             result = end_func(self, [], node_context=(0,0))
 
@@ -309,7 +323,7 @@ class Interpreter:
             elif op == '/':
                 rtnval =  left // right  # Integer division
             else:
-               raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}") 
+                raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}") 
         if self.trace:
             self.write_to_stderr(f"TRACE: OPERATOR {left} {op} {right} => {rtnval}")
         return rtnval
@@ -340,6 +354,12 @@ class Interpreter:
             return list(range(start, end + 1))
         else:
             return list(range(start, end - 1, -1))
+        
+    def create_closure_context(self):
+        keys_to_remove = ["NF", "NR", "$0", "$ARGS", "$NF"]
+        closure_context = self.environment.copy()
+        rtnval = {k: v for k, v in closure_context.items() if k not in keys_to_remove}
+        return rtnval
     
     def eval_function_definition(self, node):
         """
@@ -353,12 +373,12 @@ class Interpreter:
         # Named functions
         if ('name' in node and node['name']):
             name = node['name']
-            func = self.functions[name] if name in self.functions else  CallableFunction(name, closure_context=self.environment.copy())
+            func = self.functions[name] if name in self.functions else  CallableFunction(name, closure_context=self.create_closure_context())
             self.functions[name] = func
         else:
             # Anonymous functions
             name = f"anon_{id(node)}"
-            func = CallableFunction(name=name, closure_context=self.environment.copy())
+            func = CallableFunction(name=name, closure_context=self.create_closure_context())
         for definition in node['definitions']:
             func.add_definition(definition)
         if self.trace:
@@ -452,7 +472,7 @@ class GENIAInterpreter:
         self.parser = None
         self.interpreter = Interpreter()
 
-    def run(self, code, args=None, awk_mode=False, stdin=None, stdout=None, stderr=None):
+    def run(self, code, args=None, awk_mode=None, stdin=None, stdout=None, stderr=None):
         """
         Execute the given code.
 

@@ -14,7 +14,7 @@ fn reverse() -> fn(list) -> reverse(list)
 fn reverse([]) -> []
 fn reverse(list) -> reduce(fn (acc, el) -> [el, ..acc], [], list)
 
-fn compose(f) -> f
+fn compose(f) -> fn(x) -> f(x)
 fn compose(f, g) -> fn(x) -> f(g(x))
 fn compose(f, g, h) -> fn(x) -> f(g(h(x)))
 

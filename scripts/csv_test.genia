@@ -1,0 +1,5 @@
+fn begin() -> print("Starting AWK mode")
+
+fn end() -> print("Processed " , NR , " lines")
+
+print("Line " , NR , " has " , NF , " fields")
