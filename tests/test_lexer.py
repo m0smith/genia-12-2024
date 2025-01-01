@@ -291,3 +291,62 @@ def test_parser_list_pattern_tokens():
     ]
 
     assert tokens == expected_tokens
+    
+def test_multiple_statements_in_function():
+    code = "fn foo() -> (a = 1; b = 2; a + b)"
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('KEYWORD', 'fn', 1, 1),
+        ('IDENTIFIER', 'foo', 1, 4),
+        ('PUNCTUATION', '(', 1, 7),
+        ('PUNCTUATION', ')', 1, 8),
+        ('ARROW', '->', 1, 10),
+        ('PUNCTUATION', '(', 1, 13),
+        ('IDENTIFIER', 'a', 1, 14),
+        ('OPERATOR', '=', 1, 16),
+        ('NUMBER', '1', 1, 18),
+        ('PUNCTUATION', ';', 1, 19),
+        ('IDENTIFIER', 'b', 1, 21),
+        ('OPERATOR', '=', 1, 23),
+        ('NUMBER', '2', 1, 25),
+        ('PUNCTUATION', ';', 1, 26),
+        ('IDENTIFIER', 'a', 1, 28),
+        ('OPERATOR', '+', 1, 30),
+        ('IDENTIFIER', 'b', 1, 32),
+        ('PUNCTUATION', ')', 1, 33),
+    ]
+    assert tokens == expected_tokens
+
+def test_nested_grouped_statements():
+    code = "fn bar() -> (x = (y = 1; z = 2; y * z); x + 5);"
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('KEYWORD', 'fn', 1, 1),
+        ('IDENTIFIER', 'bar', 1, 4),
+        ('PUNCTUATION', '(', 1, 7),
+        ('PUNCTUATION', ')', 1, 8),
+        ('ARROW', '->', 1, 10),
+        ('PUNCTUATION', '(', 1, 13),
+        ('IDENTIFIER', 'x', 1, 14),
+        ('OPERATOR', '=', 1, 16),
+        ('PUNCTUATION', '(', 1, 18),
+        ('IDENTIFIER', 'y', 1, 19),
+        ('OPERATOR', '=', 1, 21),
+        ('NUMBER', '1', 1, 23),
+        ('PUNCTUATION', ';', 1, 24),
+        ('IDENTIFIER', 'z', 1, 26),
+        ('OPERATOR', '=', 1, 28),
+        ('NUMBER', '2', 1, 30),
+        ('PUNCTUATION', ';', 1, 31),
+        ('IDENTIFIER', 'y', 1, 33),
+        ('OPERATOR', '*', 1, 35),
+        ('IDENTIFIER', 'z', 1, 37),
+        ('PUNCTUATION', ')', 1, 38),
+        ('PUNCTUATION', ';', 1, 39),
+        ('IDENTIFIER', 'x', 1, 41),
+        ('OPERATOR', '+', 1, 43),
+        ('NUMBER', '5', 1, 45),
+        ('PUNCTUATION', ')', 1, 46),
+        ('PUNCTUATION', ';', 1, 47),
+    ]
+    assert tokens == expected_tokens
