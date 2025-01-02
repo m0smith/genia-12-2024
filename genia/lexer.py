@@ -7,19 +7,20 @@ class Lexer:
         (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
 
         (r'\.\.', 'DOT_DOT'),                         # `..` operator
-        (r'-?\d+', 'NUMBER'),                           # Numbers
+        (r'-?\d+', 'NUMBER'),                         # Numbers
         (r'\b(?:fn|when|foreign)\b', 'KEYWORD'),      # Reserved keywords
         
         (r'->', 'ARROW'),                             # Function arrow
         (r'when', 'WHEN'),                            # 'when' keyword
         (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
-        (r'(?<![\w*?])([+\-*/=<>!])(?![\w*?])', 'OPERATOR'),  # Arithmetic operators
+        (r'(?<![\w*?])([+\-*/~=<>!])(?![\w*?])', 'OPERATOR'),  # Arithmetic operators
         # Punctuation tokens include:
         # - Parentheses `()` for grouping expressions or multi-statement function bodies
         # - Semicolon `;` for separating multiple statements within a block
         # - Curly braces `{}` for code blocks or scopes
         # - Square brackets `[]` for lists or indexing
         # - Comma `,` for separating function parameters or list elements
+       
         (r'[(){};,[\]]', 'PUNCTUATION'),              # Punctuation
         (r'\|', 'PIPE'),                              # Add token for the `|` operator
         (r'[Rr](\".*?(?<!\\)\"|\'.*?(?<!\\)\')', 'RAW_STRING'),     # Raw Strings

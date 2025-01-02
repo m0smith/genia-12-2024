@@ -120,7 +120,7 @@ class Parser:
 
             # Parse return arrow and expression
             if not self.tokens or self.tokens[0][1] != "->":
-                raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.")
+                raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.  Looking at {self.tokens[0] if self.tokens else None}")
             self.tokens.popleft()  # Consume '->'
             
             body = None
@@ -356,6 +356,7 @@ class Parser:
             '-': 3,
             '*': 4,
             '/': 4,
+            '~': 2,
             '>': 2,
             '<': 2,
             '>=': 2,

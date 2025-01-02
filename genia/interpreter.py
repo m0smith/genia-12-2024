@@ -1,6 +1,7 @@
 
 from functools import reduce
 import sys
+import re
 
 from genia.callable_function import CallableFunction
 from genia.lexer import Lexer
@@ -335,6 +336,8 @@ class Interpreter:
                 rtnval =  left * right
             elif op == '/':
                 rtnval =  left // right  # Integer division
+            elif op == '~':
+                rtnval = re.match(right, left)
             else:
                 raise RuntimeError(f"Unsupported operator: {op} at line {node['line']}, column {node['column']}") 
         if self.trace:

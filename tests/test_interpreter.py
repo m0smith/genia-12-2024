@@ -506,3 +506,13 @@ def test_eval_mixed_strings(interpreter):
     ]'''
     results = interpreter.run(code)
     assert results == ['[A-Z]+', 'regular']
+
+def test_regex(interpreter):
+    code = """
+        trace()
+        fn foo(a) when a ~ r"[a-z]" -> 42
+        trace()
+        foo("aa")
+    """
+    results = interpreter.run(code)
+    assert results == 42
