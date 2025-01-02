@@ -29,6 +29,8 @@ class Interpreter:
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4", "msg5"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4", "msg5", "msg6"])
+        self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2", "msg3", "msg4", "msg5", "msg6", "msg7"])
         self.register_foreign_function( "printenv", lambda : self.write_to_stderr(self.environment))
         self.register_foreign_function( "printenv", lambda name: self.write_to_stderr(self.environment.get(name, self.functions.get(name, f"{name} not found"))), parameters=["name"])
         self.register_foreign_function( "trace", self.do_trace)
@@ -68,9 +70,10 @@ class Interpreter:
         Prints arguments to the provided stdout stream.
         """
         if self.stdout:
-            print(*args, file=self.stdout)
+            print("FS = ["+ self.environment['FS']+ "]")
+            print(*args, sep=self.environment['FS'], file=self.stdout)
         else:
-            print(*args)
+            print(*args, sep=self.environment['FS'])
             
     def write_to_stderr(self, *args):
         """
@@ -90,6 +93,7 @@ class Interpreter:
             {
                 "NR": 0,  # Record number
                 "NF": 0,  # Number of fields
+                "FS": " ",
                 "$0": "",  # Entire record
                 "$ARGS": [],  # Arguments passed to the script
             })
