@@ -240,6 +240,12 @@ class Interpreter:
         """
         return node['value']
 
+    def eval_raw_string(self, node):
+        """
+        Evaluate a raw string node. The value is returned as-is without interpreting escape sequences.
+        """
+        return node['value']
+
     def eval_list_pattern(self, node):
         """
         Evaluate a list pattern. Handle `rest` nodes explicitly.
