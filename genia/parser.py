@@ -302,7 +302,7 @@ class Parser:
         if token_type == 'PUNCTUATION' and value == '[':
             return self.parse_list()
         
-        raise SyntaxError(f"Unexpected token {value} at line {line}, column {column}")
+        raise SyntaxError(f"Unexpected token {token_type} {value} at line {line}, column {column}")
     
     def parse_grouped_statements_or_expression(self):
         """

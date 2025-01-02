@@ -350,3 +350,69 @@ def test_nested_grouped_statements():
         ('PUNCTUATION', ';', 1, 47),
     ]
     assert tokens == expected_tokens
+
+def test_raw_string_double_quotes():
+    code = r'r"[A-Z]+\n"'
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('RAW_STRING', r"[A-Z]+\n", 1, 1),
+    ]
+    assert tokens == expected_tokens
+
+def test_raw_string_single_quotes():
+    code = r"r'[A-Z]+\n'"
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('RAW_STRING', r'[A-Z]+\n', 1, 1),
+    ]
+    assert tokens == expected_tokens
+
+def test_regular_string_double_quotes():
+    code = '"regular\\nstring"'
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('STRING', 'regular\\nstring', 1, 1),
+    ]
+    assert tokens == expected_tokens
+
+def test_regular_string_single_quotes():
+    code = "'regular\\nstring'"
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('STRING', 'regular\\nstring', 1, 1),
+    ]
+    assert tokens == expected_tokens
+
+def test_combined_strings():
+    code = r'r"[A-Z]+\n" "regular\\nstring"'
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('RAW_STRING', r'[A-Z]+\n', 1, 1),
+        ('STRING', 'regular\\\\nstring', 1, 10),
+    ]
+    assert tokens == expected_tokens
+
+def test_invalid_raw_string():
+    code = r'r"[A-Z]+\n'
+    lexer = Lexer(code)
+    with pytest.raises(SyntaxError):
+        lexer.tokenize()
+
+def test_mixed_code():
+    code = r'''
+    r"[A-Z]+\s" "regular\nstring"
+    fn example -> print("Hello")
+    '''
+    tokens = tokenize(code)
+    expected_tokens = [
+        ('RAW_STRING', r'[A-Z]+\s', 2, 5),
+        ('STRING', 'regular\\nstring', 2, 14),
+        ('KEYWORD', 'fn', 3, 5),
+        ('IDENTIFIER', 'example', 3, 8),
+        ('ARROW', '->', 3, 16),
+        ('IDENTIFIER', 'print', 3, 19),
+        ('PUNCTUATION', '(', 3, 24),
+        ('STRING', 'Hello', 3, 25),
+        ('PUNCTUATION', ')', 3, 30),
+    ]
+    assert tokens == expected_tokens

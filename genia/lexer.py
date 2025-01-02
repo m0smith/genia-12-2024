@@ -9,7 +9,7 @@ class Lexer:
         (r'\.\.', 'DOT_DOT'),                         # `..` operator
         (r'-?\d+', 'NUMBER'),                           # Numbers
         (r'\b(?:fn|when|foreign)\b', 'KEYWORD'),      # Reserved keywords
-        (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),        # General identifiers and keywords
+        
         (r'->', 'ARROW'),                             # Function arrow
         (r'when', 'WHEN'),                            # 'when' keyword
         (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
@@ -20,8 +20,10 @@ class Lexer:
         # - Curly braces `{}` for code blocks or scopes
         # - Square brackets `[]` for lists or indexing
         # - Comma `,` for separating function parameters or list elements
-        (r'[(){};,[\]]', 'PUNCTUATION'),                 # Punctuation
+        (r'[(){};,[\]]', 'PUNCTUATION'),              # Punctuation
         (r'\|', 'PIPE'),                              # Add token for the `|` operator
+        (r'[Rr](\".*?\"|\'.*?\')', 'RAW_STRING'),     # Raw Strings
+        (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),        # General identifiers and keywords
         (r'\".*?\"|\'.*?\'', 'STRING'),               # Strings
         (r'\s+', None),                               # Skip whitespace
     ]
@@ -41,6 +43,10 @@ class Lexer:
                 match = regex.match(self.code, pos)
                 if match:
                     match_text = match.group(0)
+                    if token_type == 'RAW_STRING':
+                        # Strip `r` prefix and quotes
+                        match_text = match_text[2:-1] if match_text.startswith('r') or match_text.startswith('R') else match_text[1:-1]
+                        
                     if token_type == 'STRING':
                         # Remove surrounding quotes from strings
                         match_text = match_text[1:-1]
