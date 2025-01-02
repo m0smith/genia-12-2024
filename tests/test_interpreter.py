@@ -509,7 +509,7 @@ def test_eval_mixed_strings(interpreter):
 
 def test_regex(interpreter):
     code = """
-        fn foo(a) when a ~ r"[a-z]" -> 42
+        fn foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
         foo("aa")
     """
     results = interpreter.run(code)
