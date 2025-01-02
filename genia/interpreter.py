@@ -70,7 +70,6 @@ class Interpreter:
         Prints arguments to the provided stdout stream.
         """
         if self.stdout:
-            print("FS = ["+ self.environment['FS']+ "]")
             print(*args, sep=self.environment['FS'], file=self.stdout)
         else:
             print(*args, sep=self.environment['FS'])
@@ -170,9 +169,14 @@ class Interpreter:
         for line in stdin:
             line_number += 1
             self.update_awk_variables(line, line_number, split_mode)
-            for statement in body:
-                result = self.evaluate(statement)
-                
+            if body:
+                for statement in body:
+                    result = self.evaluate(statement)
+            else:
+                body_func = self.functions.get("body")
+                if body_func:
+                    result = body_func(self, [], node_context=(0,0))     
+
         end_func = self.functions.get("end")
         if end_func:
             result = end_func(self, [], node_context=(0,0))

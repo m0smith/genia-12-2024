@@ -1,7 +1,6 @@
 # Immediate needs
 ## AWK Mode
 - a named code block that shares variables.  Can be called just like a function but does not create a closure
-- In awk mode, when there are no statements, execute a function called body if it exists
 
 ## Lists
 - A predicate that checks if a list contains an element
@@ -9,6 +8,7 @@
 
 # Implemented
 - Regex matching operator ~ and defining regex
+- In awk mode, when there are no statements, execute a function called body if it exists
 
 # Near future
 - Truthyness
