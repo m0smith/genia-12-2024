@@ -184,7 +184,7 @@ fn function_name(param) when param ~ pattern -> result
 
 ```genia
 fn validate(input) when input ~ r"^\d{3}-\d{3}-\d{4}$" -> true
-                   | _ -> false;
+         | (_) -> false;
 
 result = validate("123-456-7890")
 // result is true
@@ -194,8 +194,8 @@ result = validate("123-456-7890")
 
 ```genia
 fn classify(input) when input ~ r"^\d+$" -> "All digits"
-                   | input ~ r"^[A-Za-z]+$" -> "All letters"
-                   | _ -> "Mixed content";
+         | (input) when input ~ r"^[A-Za-z]+$" -> "All letters"
+         | (_) -> "Mixed content"
 
 result1 = classify("12345")
 // result1 is "All digits"
@@ -234,7 +234,7 @@ result3 = classify("Hello123")
 
 ```genia
 fn format_date(input) when input ~ r"^\d{4}-\d{2}-\d{2}$" -> "Valid date format"
-                        | _ -> "Invalid date format";
+            | (_) -> "Invalid date format";
 
 result1 = format_date("2025-01-15")
 // result1 is "Valid date format"
