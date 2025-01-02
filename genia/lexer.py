@@ -22,9 +22,9 @@ class Lexer:
         # - Comma `,` for separating function parameters or list elements
         (r'[(){};,[\]]', 'PUNCTUATION'),              # Punctuation
         (r'\|', 'PIPE'),                              # Add token for the `|` operator
-        (r'[Rr](\".*?\"|\'.*?\')', 'RAW_STRING'),     # Raw Strings
+        (r'[Rr](\".*?(?<!\\)\"|\'.*?(?<!\\)\')', 'RAW_STRING'),     # Raw Strings
         (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),        # General identifiers and keywords
-        (r'\".*?\"|\'.*?\'', 'STRING'),               # Strings
+        (r'\".*?(?<!\\)\"|\'.*?(?<!\\)\'', 'STRING'),               # Strings
         (r'\s+', None),                               # Skip whitespace
     ]
 
@@ -46,11 +46,23 @@ class Lexer:
                     if token_type == 'RAW_STRING':
                         # Strip `r` prefix and quotes
                         match_text = match_text[2:-1] if match_text.startswith('r') or match_text.startswith('R') else match_text[1:-1]
-                        
+                        # Adjust line numbers for multi-line strings
+                        newlines = match_text.count('\n')
+                        if newlines > 0:
+                            self.line += newlines
+                            self.column = len(match_text.split('\n')[-1]) + 1
+                        else:
+                            self.column += len(match_text)
                     if token_type == 'STRING':
                         # Remove surrounding quotes from strings
                         match_text = match_text[1:-1]
-
+                        # Adjust line numbers for multi-line strings
+                        newlines = match_text.count('\n')
+                        if newlines > 0:
+                            self.line += newlines
+                            self.column = len(match_text.split('\n')[-1]) + 1
+                        else:
+                            self.column += len(match_text)
                     # Skip comments and whitespace
                     if token_type not in ('COMMENT', 'BLOCK_COMMENT', None):
                         tokens.append(

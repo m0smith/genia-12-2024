@@ -89,8 +89,8 @@ def test_custom_function_call():
             'name': 'custom_function',
             'arguments': [
                 {'type': 'number', 'value': '42', 'line': 1, 'column': 17},
-                {'type': 'string', 'value': "hello", 'line': 1, 'column': 21},
-                {'type': 'identifier', 'value': 'another_var', 'line': 1, 'column': 28}
+                {'type': 'string', 'value': "hello", 'line': 1, 'column': 26},
+                {'type': 'identifier', 'value': 'another_var', 'line': 1, 'column': 33}
             ],
             'line': 1,
             'column': 1
@@ -788,4 +788,30 @@ def test_parser_nested_grouped_statements():
         }
     ]
 
+    assert ast == expected_ast
+
+def test_parser_raw_string():
+    code = r'r"[A-Z]+\n"'
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected_ast = [{
+        'type': 'raw_string',
+        'value': '[A-Z]+\\n',
+        'line': 1,
+        'column': 9
+    }]
+    assert ast == expected_ast
+
+def test_parser_regular_and_raw_strings():
+    code = '''r"[A-Z]+" "regular"'''
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected_ast = [
+        {'type': 'raw_string', 'value': '[A-Z]+', 'line': 1, 'column': 7},
+        {'type': 'string', 'value': 'regular', 'line': 1, 'column': 21},
+    ]
     assert ast == expected_ast

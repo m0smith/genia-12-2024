@@ -355,7 +355,7 @@ def test_raw_string_double_quotes():
     code = r'r"[A-Z]+\n"'
     tokens = tokenize(code)
     expected_tokens = [
-        ('RAW_STRING', r"[A-Z]+\n", 1, 1),
+        ('RAW_STRING', r"[A-Z]+\n", 1, 9),
     ]
     assert tokens == expected_tokens
 
@@ -363,7 +363,7 @@ def test_raw_string_single_quotes():
     code = r"r'[A-Z]+\n'"
     tokens = tokenize(code)
     expected_tokens = [
-        ('RAW_STRING', r'[A-Z]+\n', 1, 1),
+        ('RAW_STRING', r'[A-Z]+\n', 1, 9),
     ]
     assert tokens == expected_tokens
 
@@ -371,7 +371,7 @@ def test_regular_string_double_quotes():
     code = '"regular\\nstring"'
     tokens = tokenize(code)
     expected_tokens = [
-        ('STRING', 'regular\\nstring', 1, 1),
+        ('STRING', 'regular\\nstring', 1, 16),
     ]
     assert tokens == expected_tokens
 
@@ -379,7 +379,7 @@ def test_regular_string_single_quotes():
     code = "'regular\\nstring'"
     tokens = tokenize(code)
     expected_tokens = [
-        ('STRING', 'regular\\nstring', 1, 1),
+        ('STRING', 'regular\\nstring', 1, 16),
     ]
     assert tokens == expected_tokens
 
@@ -387,8 +387,8 @@ def test_combined_strings():
     code = r'r"[A-Z]+\n" "regular\\nstring"'
     tokens = tokenize(code)
     expected_tokens = [
-        ('RAW_STRING', r'[A-Z]+\n', 1, 1),
-        ('STRING', 'regular\\\\nstring', 1, 10),
+        ('RAW_STRING', r'[A-Z]+\n', 1, 9),
+        ('STRING', 'regular\\\\nstring', 1, 34),
     ]
     assert tokens == expected_tokens
 
@@ -405,14 +405,14 @@ def test_mixed_code():
     '''
     tokens = tokenize(code)
     expected_tokens = [
-        ('RAW_STRING', r'[A-Z]+\s', 2, 5),
-        ('STRING', 'regular\\nstring', 2, 14),
+        ('RAW_STRING', r'[A-Z]+\s', 2, 13),
+        ('STRING', 'regular\\nstring', 2, 37),
         ('KEYWORD', 'fn', 3, 5),
         ('IDENTIFIER', 'example', 3, 8),
         ('ARROW', '->', 3, 16),
         ('IDENTIFIER', 'print', 3, 19),
         ('PUNCTUATION', '(', 3, 24),
-        ('STRING', 'Hello', 3, 25),
-        ('PUNCTUATION', ')', 3, 30),
+        ('STRING', 'Hello', 3, 30),
+        ('PUNCTUATION', ')', 3, 35),
     ]
     assert tokens == expected_tokens

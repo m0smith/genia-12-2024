@@ -42,7 +42,7 @@ class Parser:
                 return self.anonymous_function_definition()
 
         # Handle assignments or expressions
-        if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER'}:
+        if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER', 'RAW_STRING'}:
             return self.assignment_or_expression()
 
         # Error for unknown statements
@@ -254,8 +254,8 @@ class Parser:
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
 
-        if token_type == 'STRING':
-            return {'type': 'string', 'value': value, 'line': line, 'column': column}
+        if token_type in {'STRING', 'RAW_STRING'}:
+            return {'type': token_type.lower(), 'value': value, 'line': line, 'column': column}
 
         if token_type == 'IDENTIFIER':
             # Check if this is a function call
