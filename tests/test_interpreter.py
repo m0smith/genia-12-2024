@@ -469,6 +469,7 @@ def test_interpreter_join_lists(interpreter):
         """
     result = interpreter.run(code)
     assert result == [1,2,3,4,5,6,7,8,9]
+
 def test_interpreter_nested_lists(interpreter):
     code = """
         [
@@ -482,6 +483,7 @@ def test_interpreter_nested_lists(interpreter):
         [1,2,3], 
         [4,5,6], 
         [9,8,7]]
+
 def test_interpreter_join_and_nested_lists(interpreter):
     code = """
         [
@@ -497,3 +499,10 @@ def test_interpreter_join_and_nested_lists(interpreter):
         9, 8, 7
     ]
 
+def test_eval_mixed_strings(interpreter):
+    code = '''[
+        r"[A-Z]+", 
+        "regular"
+    ]'''
+    results = interpreter.run(code)
+    assert results == ['[A-Z]+', 'regular']
