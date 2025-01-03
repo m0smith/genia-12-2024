@@ -4,6 +4,7 @@ import sys
 import re
 
 from genia.callable_function import CallableFunction
+from genia.delay import Delay
 from genia.lexer import Lexer
 from genia.parser import Parser
 
@@ -209,6 +210,8 @@ class Interpreter:
         method = getattr(self, method_name, None)
         if not method:
             raise RuntimeError(f"Unsupported node type: {node['type']} at line {node.get('line')}, column {node.get('column')}")
+        if self.trace:
+            self.write_to_stderr(f"TRACE: apply {method_name}  to {node}")
         return method(node)
 
     def eval_comparison(self, node):
@@ -237,19 +240,7 @@ class Interpreter:
             self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
         return rtnval
 
-    def evaluate_delay(self, expression):
-        class Delay:
-            def __init__(self, expr):
-                self.expr = expr
-                self._value = None
-                self._evaluated = False
-
-            def value(self, interpreter):
-                if not self._evaluated:
-                    self._value = interpreter.evaluate(self.expr)
-                    self._evaluated = True
-                return self._value
-
+    def eval_delay(self, expression):
         return Delay(expression)
     
     def eval_number(self, node):
@@ -304,7 +295,10 @@ class Interpreter:
         if name not in self.environment and name not in self.functions:
             # raise RuntimeError(f"Undefined variable: {name} at line {node['line']}, column {node['column']}")
             self.environment[name] = 0
-        return self.environment.get(name, self.functions.get(name))
+        rtnval = self.environment.get(name, self.functions.get(name))
+        while isinstance(rtnval, Delay):
+            rtnval = self.evaluate(rtnval.value(self)['expression'])
+        return rtnval
 
     def eval_assignment(self, node):
         """

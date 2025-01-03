@@ -514,3 +514,53 @@ def test_regex(interpreter):
     """
     results = interpreter.run(code)
     assert results == 42
+
+def test_delay(interpreter):
+    code = """
+       f = delay(520)
+       f
+    """
+    results = interpreter.run(code)
+    assert results == 520
+
+# 1. Test if a delayed expression is evaluated correctly once
+def test_delay_simple_expression(interpreter):
+    code = """
+    x = delay(10 + 20)
+    x
+    """
+    result = interpreter.run(code)
+    assert result == 30
+
+# 2. Test if a delay is evaluated lazily and only once
+def test_delay_evaluated_once(interpreter):
+    call_count = {'count': 0}
+
+    def increment():
+        call_count['count'] += 1
+        return 42
+
+    delay_obj = interpreter.interpreter.eval_delay(lambda: increment())
+    assert delay_obj.value(interpreter) == 42
+    assert call_count['count'] == 1
+    assert delay_obj.value(interpreter) == 42  # Should use cached value
+    assert call_count['count'] == 1  # Ensure it wasn't called again
+
+# 3. Test if nested delay expressions are handled correctly
+def test_nested_delay_expression(interpreter):
+    code = """
+    y = delay(delay(100))
+    y
+    """
+    result = interpreter.run(code)
+    assert result == 100
+
+# 4. Test if delay handles string expressions correctly
+def test_delay_string_expression(interpreter):
+    code = """
+    message = delay("Hello, World!")
+    message
+    """
+    result = interpreter.run(code)
+    assert result == "Hello, World!"
+
