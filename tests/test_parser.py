@@ -823,7 +823,11 @@ def test_parser_simple_delay():
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    assert ast == [{'type': 'delay', 'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 7}}]
+    assert ast == [
+        {
+            'type': 'delay', 
+            'line': 1, 'column':1,
+            'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 7}}]
 
 # 2. Test if the parser handles a delay expression with an identifier
 def test_parser_delay_with_identifier():
@@ -832,7 +836,13 @@ def test_parser_delay_with_identifier():
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    assert ast == [{'type': 'delay', 'expression': {'type': 'identifier', 'value': 'expensive_computation', 'line': 1, 'column': 7}}]
+    assert ast == [
+        {
+            'type': 'delay', 
+            'line': 1, 'column':1,
+            'expression': {'type': 'identifier', 'value': 'expensive_computation', 'line': 1, 'column': 7}
+        }
+    ]
 
 # 3. Test if the parser throws an error for missing parentheses in delay
 def test_parser_missing_parentheses():
@@ -850,7 +860,17 @@ def test_parser_nested_delay():
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    assert ast == [{'type': 'delay', 'expression': {'type': 'delay', 'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 13}}}]
+    assert ast == [
+        {
+            'type': 'delay', 
+            'line': 1, 'column': 1,
+            'expression': {
+                'type': 'delay', 
+                'line': 1, 'column': 7,
+                'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 13}
+            }
+        }
+    ]
 
 # 5. Test if the parser handles a delay expression within a function call
 def test_parser_delay_in_function_call():
@@ -870,6 +890,7 @@ def test_parser_delay_in_function_call():
                     'foreign': False,
                     'body': {
                         'type': 'delay', 
+                        'line': 1, 'column': 17,
                         'expression': {
                             'type': 'function_call', 'name': 'expensive_computation', 
                             'arguments': [], 

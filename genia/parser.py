@@ -313,7 +313,7 @@ class Parser:
         raise SyntaxError(f"Unexpected token {token_type} {value} at line {line}, column {column}")
 
     def delay_expression(self):
-        self.tokens.popleft()  # Consume 'delay'
+        _, _, line, column = self.tokens.popleft()  # Consume 'delay'
         if not self.tokens or self.tokens[0][1] != '(':
             raise SyntaxError("Expected '(' after 'delay'")
         self.tokens.popleft()  # Consume '('
@@ -321,7 +321,7 @@ class Parser:
         if not self.tokens or self.tokens[0][1] != ')':
             raise SyntaxError("Expected ')' to close 'delay' expression")
         self.tokens.popleft()  # Consume ')'
-        return {'type': 'delay', 'expression': expression}
+        return {'type': 'delay', 'expression': expression, 'line': line, 'column': column}
 
     def parse_grouped_statements_or_expression(self):
         """
