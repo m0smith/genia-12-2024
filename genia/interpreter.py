@@ -236,6 +236,21 @@ class Interpreter:
         if self.trace:
             self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
         return rtnval
+
+    def evaluate_delay(self, expression):
+        class Delay:
+            def __init__(self, expr):
+                self.expr = expr
+                self._value = None
+                self._evaluated = False
+
+            def value(self, interpreter):
+                if not self._evaluated:
+                    self._value = interpreter.evaluate(self.expr)
+                    self._evaluated = True
+                return self._value
+
+        return Delay(expression)
     
     def eval_number(self, node):
         """
