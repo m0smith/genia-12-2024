@@ -416,3 +416,44 @@ def test_mixed_code():
         ('PUNCTUATION', ')', 3, 35),
     ]
     assert tokens == expected_tokens
+
+# 1. Test if the lexer correctly identifies the 'delay' keyword
+def test_lexer_recognizes_delay_keyword():
+    code = "delay(expensive_computation())"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    assert ('KEYWORD', 'delay', 1, 1) in tokens
+
+# 2. Test if the lexer handles a combination of keywords and identifiers with delay
+def test_lexer_handles_keywords_and_identifiers():
+    code = "fn delay_value = delay(expensive_computation())"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    expected_tokens = [
+        ('KEYWORD', 'fn', 1, 1),
+        ('IDENTIFIER', 'delay_value', 1, 4),
+        ('OPERATOR', '=', 1, 16),
+        ('KEYWORD', 'delay', 1, 18),
+        ('PUNCTUATION', '(', 1, 23),
+        ('IDENTIFIER', 'expensive_computation', 1, 24),
+        ('PUNCTUATION', '(', 1, 45),
+        ('PUNCTUATION', ')', 1, 46),
+        ('PUNCTUATION', ')', 1, 47),
+    ]
+    assert tokens == expected_tokens
+
+# 3. Test if the lexer skips comments while identifying the 'delay' keyword
+def test_lexer_skips_comments():
+    code = "// This is a comment\ndelay(expensive_computation())"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    assert ('KEYWORD', 'delay', 2, 1) in tokens
+
+# 4. Test if the lexer handles nested delay expressions
+def test_lexer_handles_nested_delay():
+    code = "delay(delay(expensive_computation()))"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    delay_tokens = [token for token in tokens if token[1] == 'delay']
+    assert len(delay_tokens) == 2
+   

@@ -26,6 +26,10 @@ class Parser:
             return None
 
         token_type, value, line, column = self.tokens[0]
+
+        # Handle delay
+        if token_type == 'KEYWORD' and value == 'delay':
+            return self.delay_expression()
         
         # Handle list patterns
         if token_type == 'PUNCTUATION' and value == '[':
@@ -288,6 +292,10 @@ class Parser:
             # Reinsert the token and parse as an expression
             self.tokens.appendleft((token_type, value, line, column))
             return self.anonymous_function_definition()
+
+        if token_type == 'KEYWORD' and value == 'delay':
+            self.tokens.appendleft((token_type, value, line, column))
+            return self.delay_expression()
         
         if token_type == 'PUNCTUATION' and value == '(':
             # Peek ahead to determine if it's a single expression or multiple statements
@@ -303,7 +311,18 @@ class Parser:
             return self.parse_list()
         
         raise SyntaxError(f"Unexpected token {token_type} {value} at line {line}, column {column}")
-    
+
+    def delay_expression(self):
+        self.tokens.popleft()  # Consume 'delay'
+        if not self.tokens or self.tokens[0][1] != '(':
+            raise SyntaxError("Expected '(' after 'delay'")
+        self.tokens.popleft()  # Consume '('
+        expression = self.expression()
+        if not self.tokens or self.tokens[0][1] != ')':
+            raise SyntaxError("Expected ')' to close 'delay' expression")
+        self.tokens.popleft()  # Consume ')'
+        return {'type': 'delay', 'expression': expression}
+
     def parse_grouped_statements_or_expression(self):
         """
         Parse content inside parentheses as either:

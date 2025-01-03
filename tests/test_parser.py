@@ -815,3 +815,69 @@ def test_parser_regular_and_raw_strings():
         {'type': 'string', 'value': 'regular', 'line': 1, 'column': 21},
     ]
     assert ast == expected_ast
+
+# 1. Test if the parser correctly parses a simple delay expression
+def test_parser_simple_delay():
+    code = "delay(42)"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    assert ast == [{'type': 'delay', 'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 7}}]
+
+# 2. Test if the parser handles a delay expression with an identifier
+def test_parser_delay_with_identifier():
+    code = "delay(expensive_computation)"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    assert ast == [{'type': 'delay', 'expression': {'type': 'identifier', 'value': 'expensive_computation', 'line': 1, 'column': 7}}]
+
+# 3. Test if the parser throws an error for missing parentheses in delay
+def test_parser_missing_parentheses():
+    code = "delay 42"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    with pytest.raises(SyntaxError, match="Expected '\(' after 'delay'"):
+        parser.parse()
+
+# 4. Test if the parser handles nested delay expressions
+def test_parser_nested_delay():
+    code = "delay(delay(42))"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    assert ast == [{'type': 'delay', 'expression': {'type': 'delay', 'expression': {'type': 'number', 'value': '42', 'line': 1, 'column': 13}}}]
+
+# 5. Test if the parser handles a delay expression within a function call
+def test_parser_delay_in_function_call():
+    code = "fn compute() -> delay(expensive_computation())"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+    parser = Parser(tokens)
+    ast = parser.parse()
+    assert ast == [
+        {
+            'type': 'function_definition', 
+            'name': 'compute', 
+            'line': 1, 'column': 4,
+            'definitions': [
+                {
+                    'parameters': [], 'guard': None, 
+                    'foreign': False,
+                    'body': {
+                        'type': 'delay', 
+                        'expression': {
+                            'type': 'function_call', 'name': 'expensive_computation', 
+                            'arguments': [], 
+                            'line': 1, 'column': 23
+                        }
+                    },
+                    'line': 1, 'column': 4
+                }
+            ]
+        }
+    ]
