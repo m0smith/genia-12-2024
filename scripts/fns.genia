@@ -1,3 +1,6 @@
+TRUE = 1 == 1
+FALSE = 1 == 2
+
 fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
 fn reduce(_, acc, []) -> acc
 fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
@@ -18,6 +21,32 @@ fn compose(f) -> fn(x) -> f(x)
 fn compose(f, g) -> fn(x) -> f(g(x))
 fn compose(f, g, h) -> fn(x) -> f(g(h(x)))
 
+fn any?(pred) -> fn(list) -> any?(pred, list)
+fn any?(_, []) -> FALSE
+fn any?(pred, [head, ..tail]) when pred(head) -> TRUE
+fn any?(pred, [head, ..tail]) -> any?(pred, tail)
+
+fn every?(pred) -> fn(list) -> every?(pred, list)
+fn every?(_, []) -> TRUE
+fn every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
+fn every?(pred, [head, ..tail]) -> FALSE
+
+fn invert(pred) -> fn(x) when pred(x) -> FALSE | (x) -> TRUE
+
+fn equal? (x) -> fn(y) -> x == y
+    | (x, y) -> x == y
+
+fn distinct() -> []
+fn distinct([]) -> []
+fn distinct(list) -> distinct([], list)
+fn distinct(seen, []) -> []
+fn distinct(seen, [head, ..tail]) when any?(equal?(head), seen) -> distinct(seen, tail)
+fn distinct(seen, [head, ..tail]) -> [head, ..distinct([head, ..seen], tail)]
+
+fn distinct2() -> []
+fn distinct2([]) -> []
+fn distinct2([head, ..tail]) -> [head, ..distinct(filter(invert(equal?(head)), tail))]
+
 fn add(x, y) -> x + y
 fn double(x) -> x + x
 fn pos?(x) -> x > 0
@@ -31,3 +60,12 @@ double_pos = compose(
     filter(pos?)
 )
 print("Double and reverse the positive numbers from -10 to 10:" , double_pos(-10..10))
+
+print("Any pos in negative list?", any?(pos?, -10..-1))
+print("Any pos in positive list?", any?(pos?, -10..12))
+
+print("Distinct empy list", distinct2([]))
+print("Distinct all ones list", distinct2([1,1,1,1,1,1,1]))
+print("Distinct all ones and 'one's list", distinct2([1,1,1,1,1,1,1, "one"]))
+
+print("invert neg numbers are invert pos?", filter(invert(pos?), -10..10))
