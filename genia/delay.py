@@ -7,7 +7,7 @@ class Delay:
         self._evaluated = False
         self._lock = threading.Lock()
 
-    def value(self, interpreter):
+    def value(self, interpreter=None):
         """
         Evaluates the delayed expression if it hasn't been evaluated yet.
         Returns the cached result on subsequent accesses.
