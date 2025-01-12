@@ -5,6 +5,9 @@ fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
 fn reduce(_, acc, []) -> acc
 fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
+fn count([]) -> 0
+fn count(list) -> reduce(fn (acc, _) -> acc + 1, 0, list)
+
 fn map(f) -> fn(list) -> map(f, list)
 fn map(_, []) -> []
 fn map(func, list) -> reduce(fn (acc, el) -> [..acc, func(el)], [], list)
@@ -12,6 +15,10 @@ fn map(func, list) -> reduce(fn (acc, el) -> [..acc, func(el)], [], list)
 fn filter(f) -> fn(list) -> filter(f, list)
 fn filter(_, []) -> []
 fn filter(pred, list) -> reduce(fn (acc, el) when pred(el) -> [..acc, el] | (acc, _) -> acc, [], list)
+
+fn take(_, []) -> []
+fn take (n, seq) -> reduce(fn (acc, el) when count(acc) < n -> [..acc, el] | (acc, _) -> acc, [], seq)
+fn take(n) -> fn(seq) -> take(n, seq)
 
 fn reverse() -> fn(list) -> reverse(list)
 fn reverse([]) -> []
@@ -69,3 +76,5 @@ print("Distinct all ones list", distinct2([1,1,1,1,1,1,1]))
 print("Distinct all ones and 'one's list", distinct2([1,1,1,1,1,1,1, "one"]))
 
 print("invert neg numbers are invert pos?", filter(invert(pos?), -10..10))
+print("Count of list [1,2,3] => ", count([1,2,3]))
+print("Take 2 from list [1,2,3] => ", take(2, [1,2,3]))

@@ -19,5 +19,6 @@ fn rem(x,y) -> foreign "math.remainder" | (x) -> x
 print("rem(10) = ", rem(10))
 /* printenv("rem") */
 
-fn foo() -> (a = 1; b = 2; (a + b))
+fn foo() -> (a = 1; b = 2; printenv("a"); (a + b))
 print("FOO:", foo())
+printenv()
