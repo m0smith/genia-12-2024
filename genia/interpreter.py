@@ -5,6 +5,7 @@ import re
 
 from genia.callable_function import CallableFunction
 from genia.delay import Delay
+from genia.lazy_seq import lazyseq
 from genia.lexer import Lexer
 from genia.parser import Parser
 
@@ -24,6 +25,7 @@ class Interpreter:
 
     def add_hosted_functions(self):
         
+        self.register_foreign_function( "lazyseq", lazyseq, parameters=["seq"])
         self.register_foreign_function( "print", self.write_to_stdout)
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg"])
         self.register_foreign_function( "print", self.write_to_stdout, parameters=["msg", "msg2"])

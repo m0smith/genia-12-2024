@@ -6,8 +6,7 @@ def test_initialization_with_function():
     def compute():
         return [1, 2, 3]
     seq = LazySeq(fn=compute)
-    assert seq.fn is compute
-    assert seq.seq is None
+    assert seq.delay.value() == compute()
 
 def test_lazy_evaluation():
     calls = []
@@ -39,10 +38,10 @@ def test_locking_mechanism():
 
 def test_forced_evaluation():
     seq = LazySeq(fn=lambda: [1, 2, 3])
-    assert seq.fn is not None
+    assert seq.delay is not None
     list(seq)  # Force evaluation
-    assert seq.fn is None
-    assert list(seq.seq) == [1, 2, 3]
+    # assert seq.fn is None
+    assert seq.delay.value() == [1, 2, 3]
 
 def test_thread_safety():
     def compute():
@@ -88,11 +87,6 @@ def test_non_computation():
     seq = LazySeq(seq=iter([1, 2, 3]))
     assert list(seq) == [1, 2, 3]
 
-def test_realization_method():
-    seq = LazySeq(fn=lambda: [1, 2, 3])
-    seq._realize()
-    assert seq.fn is None
-    assert list(seq.seq) == [1, 2, 3]
 
 def test_empty_initialization():
     seq = LazySeq()

@@ -563,4 +563,19 @@ def test_delay_string_expression(interpreter):
     """
     result = interpreter.run(code)
     assert result == "Hello, World!"
+    
+def test_lazy_seq_count(interpreter):
+    code = """
+    fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
+    fn reduce(_, acc, []) -> acc
+    fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+
+    fn count([]) -> 0
+    fn count(list) -> reduce(fn (acc, _) -> acc + 1, 0, list)
+    
+    ls = lazyseq([1,2,3])
+    count(ls)
+    """
+    result = interpreter.run(code)
+    assert result == 3
 

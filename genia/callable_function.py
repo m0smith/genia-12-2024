@@ -1,3 +1,8 @@
+from genia.lazy_seq import LazySeq
+from collections import deque
+from itertools import islice
+
+
 class CallableFunction:
     def __init__(self, name, closure_context=None):
         self.name = name
@@ -29,18 +34,38 @@ class CallableFunction:
             case 'number':
                 return int(param['value']) == arg
             case _:
+                
                 raise ValueError(f"Unsupport parameter type: {param['type']}")
             
     def match_list_pattern(self, pattern, arg):
-        if not isinstance(arg, list):
+        if not isinstance(arg, (list, LazySeq)):
             return False
+        if isinstance(arg, list):
+            return self.match_list_pattern_list(pattern, arg)
+        elif isinstance(arg, LazySeq):
+            return self.match_list_pattern_lazy_seq(pattern, arg)
+        else:
+            raise ValueError(f"Unsupported type: {type(arg)}")
+    
+    def match_list_pattern_list(self, pattern, lst):
         elements = pattern['elements']
         if len(elements) == 0:  # Match an empty list
-            return len(arg) == 0
+            return len(lst) == 0
         if len(elements) >= 2 and elements[-1]['type'] == 'rest':
             # Match `[first, ..rest]`
-            return len(arg) >= len(elements) - 1
-        return len(arg) == len(elements)  # Exact length match
+            return len(lst) >= len(elements) - 1
+        return len(lst) == len(elements)  # Exact length match
+    
+    def match_list_pattern_lazy_seq(self, pattern, lazy_seq):
+        elements = pattern['elements']
+        it = iter(lazy_seq)
+        len_it = len(deque(it, maxlen=len(elements) + 1))
+        # if len(elements) == 0:  # Match an empty list
+        #     return len(lazy_seq) == 0
+        if len(elements) >= 2 and elements[-1]['type'] == 'rest':
+            # Match `[first, ..rest]`
+            return len_it >= len(elements) - 1
+        return len_it == len(elements)  # Exact length match
     
     def bind_parameters(self, definition, args):
         local_env = {}
@@ -64,15 +89,20 @@ class CallableFunction:
             return
         for i, element in enumerate(elements):
             if element['type'] == 'rest':
-                local_env[element['value']] = arg[i:]
-                # print(f"TRACE: bind {element['value']} to {arg[i:]}")
+                # Convert the remaining elements of the iterator into a list
+                if hasattr(arg, '__getitem__'):  # Check if `arg` is a list-like object
+                    local_env[element['value']] = arg[i:]
+                else:  # Assume `arg` is an iterator
+                    local_env[element['value']] = list(islice(arg, i, None))
             else:
-                local_env[element['value']] = arg[i]
-                # print(f"TRACE: bind {element['value']} to {arg[i]}")
+                if hasattr(arg, '__getitem__'):  # Check if `arg` is a list-like object
+                    local_env[element['value']] = arg[i]
+                else:  # Assume `arg` is an iterator
+                    local_env[element['value']] = next(islice(arg, i, i + 1))
     
     def __repr__(self):
         import json
-        return f"CallableFunction('{self.name}, {self.closure_context}, {self.definitions}')"
+        return f"CallableFunction('{self.name}, {self.definitions}')"
 
     def __call__(self, interpreter, args, node_context):
         matching_function = None
