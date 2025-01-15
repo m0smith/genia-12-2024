@@ -368,13 +368,13 @@ class Interpreter:
         """
         Handle destructuring assignment for list patterns.
         """
-        if not isinstance(value, (list, range)):
+        if not isinstance(value, (list, range, iter)):
             raise RuntimeError("Right-hand side of destructuring assignment must be a list or range.")
         value = list(value)  # Convert range to list if necessary
 
         elements = pattern['elements']
         if len(elements) > len(value):
-            raise RuntimeError("Not enough elements in the value to match the pattern.")
+            raise RuntimeError("Not enough elements in the valƒue to match the pattern.")
 
         for i, element in enumerate(elements):
             if element['type'] == 'rest':
