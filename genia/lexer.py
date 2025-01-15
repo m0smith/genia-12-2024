@@ -1,80 +1,64 @@
+# genia/lexer.py
+
 import re
+from collections import namedtuple
+
+# Define a simple Token structure
+Token = namedtuple('Token', ['type', 'value', 'line', 'column'])
 
 class Lexer:
-    TOKENS = [
-        (r'//.*', 'COMMENT'),                         # Single-line comments
-        (r'#.*', 'COMMENT'),                          # Single-line hash comments
-        (r'/\*.*?\*/', 'BLOCK_COMMENT'),              # Block comments
-        (r'\.\.', 'DOT_DOT'),                         # `..` operator
-        (r'-?\d+', 'NUMBER'),                         # Numbers
-        (r'\b(?:fn|when|foreign|delay)\b', 'KEYWORD'),      # Reserved keywords
-        (r'->', 'ARROW'),                             # Function arrow
-        (r'when', 'WHEN'),                            # 'when' keyword
-        (r'[<>]=?|==|!=', 'COMPARATOR'),              # Comparison operators
-        (r'(?<![\w*?])([+\-*/~=<>!])(?![\w*?])', 'OPERATOR'),  # Arithmetic operators
-        (r'\|', 'PIPE'),                              # Add token for the `|` operator
-        (r'[Rr](\".*?(?<!\\)\"|\'.*?(?<!\\)\')', 'RAW_STRING'),     # Raw Strings
-        (r'[$a-zA-Z_?][\w*?]*', 'IDENTIFIER'),        # General identifiers and keywords
-        (r'\".*?(?<!\\)\"|\'.*?(?<!\\)\'', 'STRING'),               # Strings
-        # Punctuation tokens include:
-        # - Parentheses `()` for grouping expressions or multi-statement function bodies
-        # - Semicolon `;` for separating multiple statements within a block
-        # - Curly braces `{}` for code blocks or scopes
-        # - Square brackets `[]` for lists or indexing
-        # - Comma `,` for separating function parameters or list elements
-        (r'[(){};,[\]]', 'PUNCTUATION'),              # Punctuation
-        (r'\s+', None),                               # Skip whitespace
+    # Define token specifications as regex patterns
+    token_specification = [
+        ('RAW_STRING', r'r"([^"\\]|\\.)*?"|r\'([^\'\\]|\\.)*?\''),  # Non-greedy matching
+        ('STRING', r'"([^"\\]|\\.)*"|\'([^\'\\]|\\.)*\''),        # Regular strings
+        ('COMMENT', r'//.*|#.*'),                               # Single line comments
+        ('WHITESPACE', r'[ \t]+'),                              # Whitespace
+        ('NEWLINE', r'\n'),                                      # Newlines
+        ('ARROW', r'->'),                                        # Arrow operator
+        ('DOT_DOT', r'\.\.'),                                    # Double dot
+        ('PIPE', r'\|'),                                         # Pipe operator
+        ('COMPARATOR', r'[<>!]=?'),                              # <, >, <=, >=, !=
+        ('OPERATOR', r'[+\-*/%=]'),                              # +, -, *, /, %, =
+        ('PUNCTUATION', r'[()\[\]{},;]'),                        # Punctuation
+        ('NUMBER', r'\d+'),                                      # Integer numbers
+        ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                       # Identifiers with *, +, -, /, ?
+        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b'),            # Keywords
+        ('MISMATCH', r'.'),                                       # Any other character
     ]
+
+    # Compile the regex patterns into a master pattern
+    tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
+    master_pat = re.compile(tok_regex)
+
+    class SyntaxError(Exception):
+        pass
 
     def __init__(self, code):
         self.code = code
-        self.line = 1
-        self.column = 1
 
     def tokenize(self):
-        tokens = []
-        pos = 0
-        while pos < len(self.code):
-            match = None
-            for pattern, token_type in self.TOKENS:
-                regex = re.compile(pattern, re.UNICODE)
-                match = regex.match(self.code, pos)
-                if match:
-                    match_text = match.group(0)
-                    if token_type == 'RAW_STRING':
-                        # Strip `r` prefix and quotes
-                        match_text = match_text[2:-1] if match_text.startswith('r') or match_text.startswith('R') else match_text[1:-1]
-                        # Adjust line numbers for multi-line strings
-                        newlines = match_text.count('\n')
-                        if newlines > 0:
-                            self.line += newlines
-                            self.column = len(match_text.split('\n')[-1]) + 1
-                        else:
-                            self.column += len(match_text)
-                    if token_type == 'STRING':
-                        # Remove surrounding quotes from strings
-                        match_text = match_text[1:-1]
-                        # Adjust line numbers for multi-line strings
-                        newlines = match_text.count('\n')
-                        if newlines > 0:
-                            self.line += newlines
-                            self.column = len(match_text.split('\n')[-1]) + 1
-                        else:
-                            self.column += len(match_text)
-                    # Skip comments and whitespace
-                    if token_type not in ('COMMENT', 'BLOCK_COMMENT', None):
-                        tokens.append(
-                            (token_type, match_text, self.line, self.column))
-                    # Update line and column
-                    newlines = match_text.count('\n')
-                    if newlines > 0:
-                        self.line += newlines
-                        self.column = len(match_text.split('\n')[-1]) + 1
-                    else:
-                        self.column += len(match_text)
-                    pos = match.end()
-                    break
-            if not match:
-                raise SyntaxError(f"Unexpected character at line {self.line}, column {self.column}: '{self.code[pos]}'")
-        return tokens
-
+        line_num = 1
+        line_start = 0
+        for mo in self.master_pat.finditer(self.code):
+            kind = mo.lastgroup
+            value = mo.group(kind)
+            column = mo.start() - line_start + 1
+            if kind == 'NEWLINE':
+                line_start = mo.end()
+                line_num += 1
+                continue
+            elif kind == 'WHITESPACE' or kind == 'COMMENT':
+                continue
+            elif kind == 'IDENTIFIER' and value in ['fn', 'delay', 'foreign']:
+                kind = 'KEYWORD'
+            elif kind == 'MISMATCH':
+                raise self.SyntaxError(f"Unexpected character '{value}' at line {line_num}, column {column}")
+            elif kind == 'RAW_STRING':
+                # Remove 'r' and surrounding quotes
+                value = value[2:-1]
+            elif kind == 'STRING':
+                # Remove surrounding quotes
+                value = value[1:-1]
+                # Handle escape sequences
+                value = bytes(value, "utf-8").decode("unicode_escape")
+            yield Token(kind, value, line_num, column)
