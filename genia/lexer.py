@@ -13,17 +13,16 @@ class Lexer:
         ('STRING', r'"([^"\\]|\\.)*"|\'([^\'\\]|\\.)*\''),        # Regular strings
         ('COMMENT', r'//.*|#.*'),                               # Single line comments
         ('WHITESPACE', r'[ \t]+'),                              # Whitespace
-        ('NEWLINE', r'\n'),                                      # Newlines
-        ('ARROW', r'->'),                                        # Arrow operator
-        ('DOT_DOT', r'\.\.'),                                    # Double dot
-        ('PIPE', r'\|'),                                         # Pipe operator
-        ('COMPARATOR', r'[<>!]=?'),                              # <, >, <=, >=, !=
-        ('OPERATOR', r'[+\-*/%=]'),                              # +, -, *, /, %, =
-        ('PUNCTUATION', r'[()\[\]{},;]'),                        # Punctuation
-        ('NUMBER', r'\d+'),                                      # Integer numbers
-        ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                       # Identifiers with *, +, -, /, ?
-        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b'),            # Keywords
-        ('MISMATCH', r'.'),                                       # Any other character
+        ('NEWLINE', r'\n'),                                     # Newlines
+        ('ARROW', r'->'),                                       # Arrow operator
+        ('DOT_DOT', r'\.\.'),                                   # Double dot
+        ('COMPARATOR', r'[<>!]=?'),                             # <, >, <=, >=, !=
+        ('OPERATOR', r'[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
+        ('PUNCTUATION', r'[()\[\]{},;|]'),                       # Punctuation
+        ('NUMBER', r'\d+'),                                     # Integer numbers
+        ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                      # Identifiers with *, +, -, /, ?
+        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b|\bwhen\b'),  # Keywords
+        ('MISMATCH', r'.'),                                      # Any other character
     ]
 
     # Compile the regex patterns into a master pattern
@@ -49,7 +48,7 @@ class Lexer:
                 continue
             elif kind == 'WHITESPACE' or kind == 'COMMENT':
                 continue
-            elif kind == 'IDENTIFIER' and value in ['fn', 'delay', 'foreign']:
+            elif kind == 'IDENTIFIER' and value in ['fn', 'delay', 'foreign', 'when']:
                 kind = 'KEYWORD'
             elif kind == 'MISMATCH':
                 raise self.SyntaxError(f"Unexpected character '{value}' at line {line_num}, column {column}")
