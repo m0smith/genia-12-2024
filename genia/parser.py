@@ -1,3 +1,5 @@
+# parser.py
+
 from collections import deque
 
 class Parser:
@@ -20,7 +22,6 @@ class Parser:
                 self.tokens.popleft()
         return statements
 
-
     def statement(self):
         if not self.tokens:
             return None
@@ -30,40 +31,38 @@ class Parser:
         # Handle delay
         if token_type == 'KEYWORD' and value == 'delay':
             return self.delay_expression()
-        
+
         # Handle list patterns
         if token_type == 'PUNCTUATION' and value == '[':
             return self.expression()
-        
+
         # Handle named function definitions
         if token_type == 'KEYWORD' and value == 'fn':
             # Peek the next token to determine if it's a named or anonymous function
             next_token_type = self.peek_next_token_type()
-            
+
             if next_token_type == 'IDENTIFIER':
                 return self.named_function_definition()
-            elif next_token_type == 'PUNCTUATION' and self.tokens[1][1] == '(':
+            elif next_token_type == 'PUNCTUATION' and self.peek_next_token_value() == '(':
                 return self.anonymous_function_definition()
 
         # Handle assignments or expressions
-        if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'SPECIAL_IDENTIFIER', 'RAW_STRING'}:
+        if token_type in {'IDENTIFIER', 'NUMBER', 'STRING', 'RAW_STRING'}:
             return self.assignment_or_expression()
 
         # Error for unknown statements
         context = ' '.join(token[1] for token in list(self.tokens)[:5])
         raise SyntaxError(f"Unknown statement at line {line}, column {column}: {value}. Context: {context}")
 
-
-
     def assignment_or_expression(self):
         token_type, identifier, line, column = self.tokens.popleft()
 
         if self.tokens and self.tokens[0][1] == '=':  # Assignment detected
-            self.tokens.popleft()  # Remove '=' token'
+            self.tokens.popleft()  # Remove '=' token
             if self.tokens and self.tokens[0][1] == "fn":
                 value = self.anonymous_function_definition()
             else:
-                value = expression = self.expression()
+                value = self.expression()
             return {'type': 'assignment', 'identifier': identifier, 'value': value, 'line': line, 'column': column}
 
         elif self.tokens and self.tokens[0][1] == '(':  # Function call detected
@@ -78,7 +77,7 @@ class Parser:
         token_type, fn_keyword, line, column = self.tokens.popleft()
         if fn_keyword != "fn":
             raise SyntaxError(f"Expected 'fn', found {fn_keyword} at line {line}, column {column}.")
-        
+
         # Parse the function name
         token_type, name, line, column = self.tokens.popleft()
         if token_type != "IDENTIFIER":
@@ -126,7 +125,7 @@ class Parser:
             if not self.tokens or self.tokens[0][1] != "->":
                 raise SyntaxError(f"Expected '->' in function definition at line {line}, column {column}.  Looking at {self.tokens[0] if self.tokens else None}")
             self.tokens.popleft()  # Consume '->'
-            
+
             body = None
             is_foreign = False
 
@@ -160,7 +159,7 @@ class Parser:
                 "body": body,
                 "line": line,
                 "column": column,
-                
+
             })
 
             # Check for the `|` operator
@@ -170,7 +169,7 @@ class Parser:
 
         # Return a function definition
         return {
-            "type": "function_definition", # if name else "anonymous_function",
+            "type": "function_definition",  # if name else "anonymous_function",
             "name": name,
             "definitions": definitions,
             "line": line,
@@ -185,13 +184,10 @@ class Parser:
                 self.tokens.popleft()  # Consume `..`
                 rest = self.tokens.popleft()
                 if rest[0] != "IDENTIFIER":
-                    raise SyntaxError(f"Expected identifier after '..' at line {rest[2]}.")
-                elements.append({"type": "rest", "value": rest[1]})
+                    raise SyntaxError(f"Expected identifier after '..' at line {rest[2]}, column {rest[3]}.")
+                elements.append({"type": "rest", "value": rest[1], "line": rest[2], "column": rest[3]})
             else:
-                token_type, value, line, column = self.tokens.popleft()
-                if token_type != "IDENTIFIER":
-                    raise SyntaxError(f"Expected identifier in list pattern at line {line}, column {column}.")
-                elements.append({"type": "identifier", "value": value, "line": line, "column": column})
+                elements.append(self.expression())
             if self.tokens and self.tokens[0][1] == ",":
                 self.tokens.popleft()  # Consume `,`
 
@@ -200,7 +196,6 @@ class Parser:
         self.tokens.popleft()  # Consume `]`
 
         return {"type": "list_pattern", "elements": elements}
-
 
     def function_call(self, function_name, line, column):
         self.tokens.popleft()  # Consume '('
@@ -216,7 +211,7 @@ class Parser:
 
     def expression(self, precedence=0):
         left = self.primary_expression()
-        
+
         if self.tokens and self.tokens[0][1] == '..':
             self.tokens.popleft()  # Consume `..`
             end = self.primary_expression()  # Parse the end of the range
@@ -225,12 +220,11 @@ class Parser:
                 'start': left,
                 'end': end
             }
-        
-        # print(f"DEBUG: expression {self.tokens[0]}")
+
+        # Parse operators based on precedence
         while self.tokens and self.tokens[0][0] in {'OPERATOR', 'COMPARATOR'}:
             operator_token = self.tokens[0]
             operator_precedence = self.get_precedence(operator_token[1])
-            # print(f"DEBUG: expression operator_precedence={operator_precedence} precedence={precedence}")
             if operator_precedence <= precedence:
                 break
 
@@ -240,11 +234,12 @@ class Parser:
                 'type': 'operator' if operator_token[0] == 'OPERATOR' else 'comparison',
                 'operator': operator_token[1],
                 'left': left,
-                'right': right
+                'right': right,
+                'line': operator_token[2],
+                'column': operator_token[3]
             }
 
         return left
-
 
     def primary_expression(self):
         """
@@ -287,6 +282,7 @@ class Parser:
 
             # Otherwise, it's a plain identifier
             return {'type': 'identifier', 'value': value, 'line': line, 'column': column}
+
         # Handle anonymous function definitions
         if token_type == 'KEYWORD' and value == 'fn':
             # Reinsert the token and parse as an expression
@@ -296,20 +292,15 @@ class Parser:
         if token_type == 'KEYWORD' and value == 'delay':
             self.tokens.appendleft((token_type, value, line, column))
             return self.delay_expression()
-        
+
         if token_type == 'PUNCTUATION' and value == '(':
             # Peek ahead to determine if it's a single expression or multiple statements
             grouped = self.parse_grouped_statements_or_expression()
             return grouped
-            # expr = self.expression()
-            # if not self.tokens or self.tokens[0][1] != ')':
-            #     raise SyntaxError(f"Unmatched '(' at line {line}, column {column}.")
-            # self.tokens.popleft()  # Consume ')'
-            # return expr
-        
+
         if token_type == 'PUNCTUATION' and value == '[':
             return self.parse_list()
-        
+
         raise SyntaxError(f"Unexpected token {token_type} {value} at line {line}, column {column}")
 
     def delay_expression(self):
@@ -331,7 +322,7 @@ class Parser:
         """
         statements = []
         while self.tokens and self.tokens[0][1] != ")":
-            statement = self.expression()
+            statement = self.statement()  # Changed from self.expression() to self.statement()
             statements.append(statement)
             if self.tokens and self.tokens[0][1] == ";":
                 self.tokens.popleft()  # Consume ';'
@@ -347,13 +338,15 @@ class Parser:
         # Otherwise, return a grouped statement block
         return {"type": "group", "statements": statements}
 
-
     def parse_list(self):
         elements = []
         while self.tokens and self.tokens[0][1] != ']':
             if self.tokens[0][1] == '..':
-                rest_type, rest_name, line, column = self.tokens.popleft()  # Consume `..`
-                elements.append({'type': 'rest', 'value': "rest", 'line': line, 'column': column})
+                self.tokens.popleft()  # Consume `..`
+                if not self.tokens or self.tokens[0][0] != 'IDENTIFIER':
+                    raise SyntaxError("Expected identifier after '..' in list pattern.")
+                rest = self.tokens.popleft()
+                elements.append({'type': 'rest', 'value': rest[1], 'line': rest[2], 'column': rest[3]})
             else:
                 elements.append(self.expression())
             if self.tokens and self.tokens[0][1] == ',':
@@ -365,7 +358,7 @@ class Parser:
             'type': 'list_pattern',
             'elements': elements
         }
-        
+
     def get_precedence(self, operator):
         """
         Return the precedence of an operator. Higher values indicate higher precedence.
@@ -381,7 +374,8 @@ class Parser:
             '>=': 2,
             '<=': 2,
             '==': 2,
-            '!=': 2
+            '!=': 2,
+            '=': 1  # Lower precedence for assignment
         }
         return precedences.get(operator, 1)  # Default precedence is 1
 
@@ -390,6 +384,15 @@ class Parser:
         Peek at the type of the next token without consuming it.
         Returns None if no tokens are left.
         """
-        if self.tokens:
+        if len(self.tokens) >= 2:
             return self.tokens[1][0]  # Return the type of the next token
+        return None
+
+    def peek_next_token_value(self):
+        """
+        Peek at the value of the next token without consuming it.
+        Returns None if no tokens are left.
+        """
+        if len(self.tokens) >= 2:
+            return self.tokens[1][1]  # Return the value of the next token
         return None
