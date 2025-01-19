@@ -213,7 +213,7 @@ def test_function_with_guard():
                 {
                     "parameters": [{"type": "identifier", "value": "n"}],
                     "guard": {
-                        "type": "operator",
+                        "type": "comparator",
                         "operator": ">",
                         "left": {"type": "identifier", "value": "n"},
                         "right": {"type": "number", "value": "1"}
@@ -481,6 +481,21 @@ def test_parser_raw_string():
     }]
     assert strip_metadata(ast) == strip_metadata(expected_ast)
 
+def test_parser_unary():
+    code = r'-1'
+    ast = parse(code)
+    expected_ast = [{
+        'type': 'expression_statement',
+        'expression': {
+            'type': 'unary_operator',
+            'operator': '-',
+            'operand':  {'type': 'number', 'value': '1'},
+            'line': 1,
+            'column': 1
+        }
+    }]
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
+
 
 def test_parser_regular_and_raw_strings():
     code = '''r"[A-Z]+" "regular"'''
@@ -596,3 +611,146 @@ def test_parser_delay_in_function_call():
         }
     ]
     assert strip_metadata( ast) == strip_metadata(  expected_ast )
+
+def test_parser_named_function_with_literal():
+    code = "fn fact(0) -> 1;"
+    lexer = Lexer(code)
+    tokens = list(lexer.tokenize())
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected_ast = [
+        {
+            'type': 'function_definition',
+            'name': 'fact',
+            'definitions': [
+                {
+                    'parameters': [{'type': 'number_literal', 'value': 0, 'line': 1, 'column': 10}],
+                    'guard': None,
+                    'body': {'type': 'number', 'value': '1', 'line': 1, 'column': 15},
+                    'foreign': False,
+                    'line': 1,
+                    'column': 15
+                }
+            ],
+            'line': 1,
+            'column': 5
+        }
+    ]
+    assert strip_metadata( ast) == strip_metadata (expected_ast)
+
+def test_parser_anonymous_function():
+    code = "fn (y) -> y + 1;"
+    lexer = Lexer(code)
+    tokens = list(lexer.tokenize())
+    parser = Parser(tokens)
+    ast = parser.parse()
+    expected_ast = [
+        {
+            'type': 'function_definition',
+            'name': None,
+            'definitions': [
+                {
+                    'parameters': [{'type': 'identifier', 'value': 'y', 'line': 1, 'column': 5}],
+                    'guard': None,
+                    'body': {
+                        'type': 'operator',
+                        'operator': '+',
+                        'left': {'type': 'identifier', 'value': 'y', 'line': 1, 'column': 10},
+                        'right': {'type': 'number', 'value': '1', 'line': 1, 'column': 14},
+                        'line': 1,
+                        'column': 12
+                    },
+                    'foreign': False,
+                    'line': 1,
+                    'column': 12
+                }
+            ],
+            'line': 1,
+            'column': 1
+        }
+    ]
+    assert strip_metadata (ast) == strip_metadata (expected_ast)
+    
+
+def test_parser_multiple_spread_operators():
+    """
+    Test parsing of a function definition with multiple spread operators in list patterns.
+    
+    Function Definition:
+        fn process([..a, ..b]) -> [..a, ..b]
+    
+    Expected AST Structure:
+    [
+        {
+            'type': 'function_definition',
+            'name': 'process',
+            'definitions': [
+                {
+                    'parameters': [
+                        {
+                            'type': 'list_pattern',
+                            'elements': [
+                                {'type': 'spread', 'value': 'a'},
+                                {'type': 'spread', 'value': 'b'}
+                            ],
+                            'line': 1,
+                            'column': 12
+                        }
+                    ],
+                    'guard': None,
+                    'body': {
+                        'type': 'list',
+                        'elements': [
+                            {'type': 'spread', 'value': 'a'},
+                            {'type': 'spread', 'value': 'b'}
+                        ],
+                        'line': 1,
+                        'column': 25
+                    },
+                    'foreign': False
+                }
+            ],
+            'line': 1,
+            'column': 1
+        }
+    ]
+    """
+    code = "fn process([..a, ..b]) -> [..a, ..b]"
+    ast = parse(code)
+    
+    expected_ast = [
+        {
+            'type': 'function_definition',
+            'name': 'process',
+            'definitions': [
+                {
+                    'parameters': [
+                        {
+                            'type': 'list_pattern',
+                            'elements': [
+                                {'type': 'spread', 'value': 'a'},
+                                {'type': 'spread', 'value': 'b'}
+                            ],
+                            'line': 1,
+                            'column': 12
+                        }
+                    ],
+                    'guard': None,
+                    'body': {
+                        'type': 'list',
+                        'elements': [
+                            {'type': 'spread', 'value': 'a'},
+                            {'type': 'spread', 'value': 'b'}
+                        ],
+                        'line': 1,
+                        'column': 25
+                    },
+                    'foreign': False
+                }
+            ],
+            'line': 1,
+            'column': 1
+        }
+    ]
+    
+    assert strip_metadata (ast) == strip_metadata (expected_ast), f"Expected AST does not match actual AST.\nExpected: {expected_ast}\nActual: {ast}"

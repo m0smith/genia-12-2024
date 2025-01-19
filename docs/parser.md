@@ -1,1118 +1,874 @@
-**GENIA Parser Comprehensive Specification**
+# GENIA Parser and Abstract Syntax Tree (AST) Specification Document
 
 ---
 
-## **1. Introduction**
+## Table of Contents
 
-Welcome to the comprehensive specification for the GENIA Parser. This document outlines the capabilities, structure, and functionality of the GENIA Parser, detailing how it processes GENIA code into an Abstract Syntax Tree (AST). Whether you're a developer integrating the parser, contributing to its development, or simply seeking to understand its inner workings, this specification serves as your definitive guide.
+1. [Introduction](#introduction)
+2. [Language Overview](#language-overview)
+3. [Lexical Structure](#lexical-structure)
+4. [Syntax Specification](#syntax-specification)
+    - [Function Definitions](#function-definitions)
+    - [Expressions and Operators](#expressions-and-operators)
+    - [Variable Assignments and Scope](#variable-assignments-and-scope)
+    - [Patterns](#patterns)
+    - [List and Spread Expressions](#list-and-spread-expressions)
+    - [Foreign Function Integrations](#foreign-function-integrations)
+    - [Delayed Expressions](#delayed-expressions)
+5. [Abstract Syntax Tree (AST) Specification](#abstract-syntax-tree-ast-specification)
+    - [AST Node Types](#ast-node-types)
+        - [Program](#program)
+        - [FunctionDefinition](#functiondefinition)
+        - [AnonymousFunction](#anonymousfunction)
+        - [Parameters](#parameters)
+        - [Patterns](#patterns-1)
+        - [Expressions](#expressions)
+        - [Operators](#operators)
+        - [Assignments](#assignments)
+        - [FunctionCalls](#functioncalls)
+        - [SpreadOperators](#spreadoperators)
+        - [DelayedExpressions](#delayedexpressions)
+        - [Foreign](#foreign)
+        - [GroupStatements](#groupstatements)
+    - [Metadata](#metadata)
+6. [Parser Behavior](#parser-behavior)
+    - [Parsing Strategy](#parsing-strategy)
+    - [Error Handling](#error-handling)
+7. [Examples](#examples)
+    - [Function Definition with Pattern Matching](#function-definition-with-pattern-matching)
+    - [Nested Functions](#nested-functions)
+    - [Recursive Functions](#recursive-functions)
+    - [Function Calls with Spread Operators](#function-calls-with-spread-operators)
+8. [Testing](#testing)
+    - [Unit Tests Overview](#unit-tests-overview)
+    - [Helper Functions](#helper-functions)
+9. [Best Practices](#best-practices)
+10. [Conclusion](#conclusion)
 
 ---
 
-## **2. Overview of GENIA Language**
+## Introduction
 
-GENIA is a statically-typed, functional programming language designed for clarity, expressiveness, and ease of use. It incorporates modern language features such as pattern matching, higher-order functions, and foreign function interfaces (FFI). The GENIA Parser is responsible for transforming GENIA source code into an AST, which the interpreter or compiler subsequently utilizes for execution or further compilation.
-
-### **Key Features:**
-
-- **Expressions and Operators:** Supports arithmetic and logical operations with proper precedence handling.
-- **Function Definitions:** Allows multi-arity and guarded function definitions.
-- **Delay Expressions:** Facilitates delayed computations for asynchronous or optimized execution.
-- **List Patterns:** Enables destructuring of lists with support for rest elements.
-- **Foreign Function Interface (FFI):** Integrates external functions seamlessly.
-- **Range Expressions:** Simplifies range definitions using `start..end` syntax.
-- **String Literals:** Differentiates between raw and regular strings for varied use cases.
+This document serves as a comprehensive specification for the **GENIA** programming language parser and its corresponding Abstract Syntax Tree (AST). It outlines the language's syntax, the structure of the AST nodes, parser behavior, and provides examples to illustrate the parsing process. This specification is intended for developers working on the GENIA language implementation, contributors to the parser, and anyone interested in understanding the internal workings of the GENIA parser.
 
 ---
 
-## **3. Lexer and Tokenization**
+## Language Overview
 
-Before delving into parsing, it's essential to understand that the GENIA Parser relies on tokens produced by the Lexer. The Lexer transforms raw source code into a sequence of tokens, each representing meaningful elements like identifiers, numbers, operators, and punctuation.
+**GENIA** is a statically-typed, functional programming language that emphasizes pattern matching, immutable data structures, and seamless integration with foreign (external) functions. The language supports advanced features such as function overloading, delayed expressions, and comprehensive pattern matching in function parameters. GENIA currently does **not** support traditional control structures like `if-then`, `else`, or looping constructs such as `while`. Instead, conditional behavior is achieved through function overloading with guard conditions, and iteration is handled exclusively via recursion.
 
-### **Token Structure:**
+---
 
-Each token is a tuple containing:
+## Lexical Structure
 
-1. **Type:** The category of the token (e.g., `IDENTIFIER`, `NUMBER`, `OPERATOR`, `STRING`, `RAW_STRING`, `KEYWORD`, `PUNCTUATION`).
-2. **Value:** The actual string value of the token (e.g., `foo`, `+`, `42`).
-3. **Line:** The line number where the token appears (starting at 1).
-4. **Column:** The column number where the token starts (starting at 1).
+Before delving into the syntax, it's essential to understand the lexical elements of GENIA.
 
-*Example Token:*
+### Tokens
 
-```python
-('IDENTIFIER', 'foo', 1, 5)
+The GENIA lexer identifies the following token types:
+
+- **Keywords**: `fn`, `delay`, `foreign`
+- **Identifiers**: Names for variables, functions, etc. (e.g., `foo`, `x`, `calculate`)
+- **Operators**: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`
+- **Punctuations**: `(`, `)`, `[`, `]`, `,`, `;`, `=`, `->`, `|`, `...`
+- **Literals**:
+    - **Numbers**: Integer and floating-point numbers (e.g., `42`, `3.14`)
+    - **Strings**: Enclosed in double quotes (e.g., `"Hello, World!"`)
+    - **Raw Strings**: Enclosed in backticks (e.g., `` `raw string` ``)
+- **Spread Operator**: `..` (used within list expressions and patterns)
+
+### Comments
+
+GENIA supports single-line and multi-line comments:
+
+- **Single-Line**: Start with `//` and extend to the end of the line.
+- **Multi-Line**: Enclosed within `/*` and `*/`.
+
+### Whitespace
+
+Whitespace characters (spaces, tabs, newlines) are generally ignored except when they serve to separate tokens.
+
+---
+
+## Syntax Specification
+
+This section details the grammatical rules of the GENIA language, defining how various language constructs are formed.
+
+### Function Definitions
+
+GENIA allows defining functions using the `fn` keyword. Functions can have multiple definitions (overloading) differentiated by parameter patterns and guards.
+
+#### Basic Function Definition
+
+```genia
+fn functionName(parameters) -> expression;
 ```
 
----
+**Example:**
 
-## **4. Parser Architecture**
-
-The GENIA Parser processes the sequence of tokens from the Lexer to construct an AST that accurately represents the structure and semantics of the source code. It employs recursive descent parsing techniques, handling various language constructs through dedicated parsing functions.
-
-### **Core Components:**
-
-1. **Parser Class:** Manages the parsing process, maintaining the token stream and providing methods to parse different language constructs.
-2. **AST Nodes:** Represent the hierarchical structure of the source code, with each node corresponding to a specific language element.
-
----
-
-## **5. Grammar Overview**
-
-Below is a simplified grammar outlining the GENIA language constructs supported by the parser. This grammar serves as a foundation for understanding how different elements are parsed and represented in the AST.
-
-### **5.1. Lexical Elements**
-
-- **Identifiers:** `[a-zA-Z_][a-zA-Z0-9_]*`
-- **Numbers:** `\d+(\.\d+)?`
-- **Strings:** `"(?:\\.|[^"\\])*"`
-- **Raw Strings:** `r"(?:\\.|[^"\\])*"`
-- **Operators:** `+`, `-`, `*`, `/`, `=`, `..`, `>`, `<`, `>=`, `<=`, `==`, `!=`
-- **Punctuation:** `(`, `)`, `[`, `]`, `{`, `}`, `,`, `;`, `|`, `->`
-- **Keywords:** `fn`, `delay`, `foreign`, `when`
-
-### **5.2. Syntax Rules**
-
-```bnf
-<program> ::= <statement_list>
-
-<statement_list> ::= <statement> (";" <statement>)*
-
-<statement> ::= <function_definition>
-              | <assignment>
-              | <expression>
-
-<function_definition> ::= "fn" <identifier> "(" <parameters> ")" [ "when" <expression> ] "->" <expression> ( "|" <function_definition> )*
-
-<parameters> ::= <parameter> ("," <parameter>)* | <list_pattern>
-
-<parameter> ::= <identifier>
-
-<assignment> ::= <identifier> "=" <expression>
-
-<expression> ::= <comparison>
-
-<comparison> ::= <addition> ( ("==" | "!=" | ">" | "<" | ">=" | "<=") <addition> )*
-
-<addition> ::= <multiplication> ( ("+" | "-") <multiplication> )*
-
-<multiplication> ::= <unary> ( ("*" | "/") <unary> )*
-
-<unary> ::= ("+" | "-") <unary>
-           | <primary>
-
-<primary> ::= <number>
-            | <string>
-            | <raw_string>
-            | <identifier>
-            | <function_call>
-            | <delay_expression>
-            | <range_expression>
-            | "(" <expression> ")"
-            | "[" <list_pattern> "]"
-
-<function_call> ::= <identifier> "(" <arguments> ")"
-
-<arguments> ::= <expression> ("," <expression>)* | /* empty */
-
-<delay_expression> ::= "delay" "(" <expression> ")"
-
-<range_expression> ::= <expression> ".." <expression>
-
-<list_pattern> ::= <pattern_element> ("," <pattern_element>)*
-
-<pattern_element> ::= <identifier>
-                   | ".." <identifier>
+```genia
+fn add(x, y) -> x + y;
 ```
 
-*Note:* The actual grammar may include more nuanced rules to handle additional constructs and edge cases.
+#### Function Definition with Multiple Arity and Guards
+
+```genia
+fn functionName(parameters) when condition -> expression;
+| (alternativeParameters) when alternativeCondition -> alternativeExpression;
+| (otherParameters) -> otherExpression;
+```
+
+**Example:**
+
+```genia
+fn process(x) when x > 0 -> x;
+| (x) when x < 0 -> -x;
+```
+
+**Notes:**
+
+- **Guard Conditions**: The `when` keyword introduces a condition that must be satisfied for the corresponding function definition to be invoked.
+- **Function Overloading**: Multiple definitions allow the same function name to handle different scenarios based on input patterns and guards.
+
+### Expressions and Operators
+
+Expressions in GENIA can be simple literals, identifiers, or complex expressions involving operators. The language supports standard arithmetic, logical, and comparison operators with defined precedence and associativity.
+
+#### Arithmetic Operators
+
+- Addition: `+`
+- Subtraction: `-`
+- Multiplication: `*`
+- Division: `/`
+- Modulo: `%`
+
+#### Logical Operators
+
+- Logical AND: `and`
+- Logical OR: `or`
+- Logical NOT: `not`
+
+#### Comparison Operators
+
+- Equal to: `==`
+- Not equal to: `!=`
+- Greater than: `>`
+- Less than: `<`
+- Greater than or equal to: `>=`
+- Less than or equal to: `<=`
+
+**Operator Precedence:**
+
+1. Parentheses `()`
+2. Unary operators: `not`, `-` (negation)
+3. Multiplicative: `*`, `/`, `%`
+4. Additive: `+`, `-`
+5. Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
+6. Logical AND: `and`
+7. Logical OR: `or`
+
+**Associativity:**
+
+- Left-to-right for all binary operators.
+- Right-to-left for unary operators.
+
+### Variable Assignments and Scope
+
+GENIA uses immutable data structures by default, but variables can be reassigned within specific scopes (e.g., within functions or grouped statements).
+
+#### Assignment Syntax
+
+```genia
+identifier = expression;
+```
+
+**Example:**
+
+```genia
+x = 10;
+y = x + 5;
+```
+
+**Scope Rules:**
+
+- Variables are scoped within the function or grouped statement in which they are defined.
+- Shadowing is allowed; inner scopes can redefine variables from outer scopes.
+
+### Patterns
+
+GENIA supports comprehensive pattern matching in function parameters, including list patterns and wildcard patterns.
+
+#### List Patterns
+
+```genia
+fn functionName([pattern1, pattern2, ..spreadPattern]) -> expression;
+```
+
+**Example:**
+
+```genia
+fn unpack([a, ..rest]) -> a;
+```
+
+#### Wildcard Patterns
+
+The `_` identifier can be used as a wildcard to ignore specific elements in patterns.
+
+**Example:**
+
+```genia
+fn ignore_second([a, _, c]) -> a + c;
+```
+
+**Notes:**
+
+- **Spread Patterns**: The `..` operator allows capturing the remaining elements in a list pattern.
+
+### List and Spread Expressions
+
+GENIA allows the creation and manipulation of list data structures using square brackets and the spread operator.
+
+#### List Expressions
+
+```genia
+[ element1, element2, ...spreadElement ];
+```
+
+**Example:**
+
+```genia
+fn create_list() -> [1, 2, 3, ..additional];
+```
+
+**Notes:**
+
+- **Spread Operator**: The `...` operator is used to include additional elements from existing lists.
+
+### Foreign Function Integrations
+
+GENIA can integrate with external (foreign) functions seamlessly, allowing calls to functions defined outside the GENIA environment.
+
+#### Foreign Function Syntax
+
+```genia
+foreign "module.functionName" -> fn(parameters) -> expression;
+```
+
+**Example:**
+
+```genia
+foreign "math.sqrt" -> fn(x) -> sqrt(x);
+```
+
+**Notes:**
+
+- **Foreign Keyword**: Indicates that the function is defined externally.
+- **Module Specification**: The string `"module.functionName"` specifies the external function's location.
+
+### Delayed Expressions
+
+GENIA supports delayed (lazy) evaluation of expressions using the `delay` keyword. This allows deferring the computation of an expression until it's explicitly invoked.
+
+#### Delay Syntax
+
+```genia
+delay(expression);
+```
+
+**Example:**
+
+```genia
+fn compute() -> delay(fn(x) -> x * x);
+```
+
+**Notes:**
+
+- **Delayed Execution**: The `delay` keyword wraps an expression, preventing its immediate evaluation.
+- **Use Cases**: Useful for optimizing performance by avoiding unnecessary computations.
 
 ---
 
-## **6. Abstract Syntax Tree (AST) Structure**
+## Abstract Syntax Tree (AST) Specification
 
-The AST is a tree representation of the source code, where each node corresponds to a language construct. Below is a detailed documentation of the AST node types, their fields, and how they interrelate.
+The AST is a tree representation of the syntactic structure of GENIA code. Each node in the AST represents a construct occurring in the source code.
 
-### **6.1. AST Node Types**
+### AST Node Types
 
-#### **6.1.1. Program**
+The following outlines the various AST node types used in GENIA, along with their properties.
 
-- **Type:** `program`
-- **Fields:**
-  - `statements`: List of `<statement>` nodes.
+#### Program
 
-#### **6.1.2. Function Definition**
-
-- **Type:** `function_definition`
-- **Fields:**
-  - `name`: *Optional.* The function's name (`str`). `None` for anonymous functions.
-  - `definitions`: List of `<function_definition_body>` nodes.
-  - `line`: Line number where the function is defined.
-  - `column`: Column number where the function definition starts.
-
-#### **6.1.3. Function Definition Body**
-
-- **Type:** `function_definition_body`
-- **Fields:**
-  - `parameters`: List of `<parameter>` nodes or a single `<list_pattern>` node.
-  - `guard`: *Optional.* A `<comparison>` node representing a guard condition.
-  - `foreign`: `bool` indicating if the function is foreign (FFI) or native.
-  - `body`: `<expression>` node representing the function's body.
-  - `line`: Line number where the definition body starts.
-  - `column`: Column number where the definition body starts.
-
-#### **6.1.4. Assignment**
-
-- **Type:** `assignment`
-- **Fields:**
-  - `identifier`: The name of the variable being assigned (`str`).
-  - `value`: An `<expression>` node representing the value being assigned.
-  - `line`: Line number of the assignment.
-  - `column`: Column number where the assignment starts.
-
-#### **6.1.5. Operator**
-
-- **Type:** `operator`
-- **Fields:**
-  - `operator`: The operator symbol (`str`, e.g., `+`, `-`, `*`, `/`, `=`).
-  - `left`: The left operand (`<expression>` node).
-  - `right`: The right operand (`<expression>` node).
-  - `line`: Line number where the operator appears.
-  - `column`: Column number where the operator starts.
-
-#### **6.1.6. Comparison**
-
-- **Type:** `comparison`
-- **Fields:**
-  - `operator`: The comparison operator (`str`, e.g., `==`, `!=`, `>`, `<`, `>=`, `<=`).
-  - `left`: The left operand (`<expression>` node).
-  - `right`: The right operand (`<expression>` node).
-  - `line`: Line number where the comparison occurs.
-  - `column`: Column number where the comparison starts.
-
-#### **6.1.7. Function Call**
-
-- **Type:** `function_call`
-- **Fields:**
-  - `name`: The name of the function being called (`str`).
-  - `arguments`: List of `<expression>` nodes representing function arguments.
-  - `line`: Line number where the function call starts.
-  - `column`: Column number where the function call starts.
-
-#### **6.1.8. Delay Expression**
-
-- **Type:** `delay`
-- **Fields:**
-  - `expression`: An `<expression>` node representing the delayed computation.
-  - `line`: Line number where the delay expression starts.
-  - `column`: Column number where the delay expression starts.
-
-#### **6.1.9. Range Expression**
-
-- **Type:** `range`
-- **Fields:**
-  - `start`: The start value (`<expression>` node).
-  - `end`: The end value (`<expression>` node).
-
-#### **6.1.10. List Pattern**
-
-- **Type:** `list_pattern`
-- **Fields:**
-  - `elements`: List of `<pattern_element>` nodes.
-
-#### **6.1.11. Pattern Element**
-
-- **Types:** `identifier`, `rest`
-  
-  - **Identifier Pattern Element:**
-    - **Type:** `identifier`
-    - **Fields:**
-      - `value`: The identifier name (`str`).
-      - `line`: Line number where the identifier appears.
-      - `column`: Column number where the identifier starts.
-
-  - **Rest Pattern Element:**
-    - **Type:** `rest`
-    - **Fields:**
-      - `value`: The identifier name for the rest pattern (`str`).
-      - `line`: Line number where the rest pattern appears.
-      - `column`: Column number where the rest pattern starts.
-
-#### **6.1.12. Number**
-
-- **Type:** `number`
-- **Fields:**
-  - `value`: The numeric value (`str` to preserve formatting, e.g., `"42"`).
-  - `line`: Line number where the number appears.
-  - `column`: Column number where the number starts.
-
-#### **6.1.13. String Literals**
-
-- **Types:** `string`, `raw_string`
-
-  - **String Literal:**
-    - **Type:** `string`
-    - **Fields:**
-      - `value`: The string content (`str`), with escape sequences processed.
-      - `line`: Line number where the string appears.
-      - `column`: Column number where the string starts.
-
-  - **Raw String Literal:**
-    - **Type:** `raw_string`
-    - **Fields:**
-      - `value`: The raw string content (`str`), with escape sequences preserved.
-      - `line`: Line number where the raw string appears.
-      - `column`: Column number where the raw string starts.
-
-#### **6.1.14. Identifier**
-
-- **Type:** `identifier`
-- **Fields:**
-  - `value`: The identifier name (`str`).
-  - `line`: Line number where the identifier appears.
-  - `column`: Column number where the identifier starts.
-
----
-
-## **7. AST Node Documentation**
-
-Below are detailed descriptions of each AST node type, including their purpose, structure, and examples.
-
-### **7.1. Program Node**
-
-Represents the entire GENIA program.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "program",
-      "statements": [/* List of statement nodes */]
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "program",
-      "statements": [
-          {
-              "type": "function_definition",
-              "name": "add",
-              "definitions": [/* Function definition bodies */],
-              "line": 1,
-              "column": 1
-          },
-          /* Other statements */
-      ]
-  }
-  ```
-
-### **7.2. Function Definition Node**
-
-Represents a function definition, which may have multiple definitions for different arities or guards.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "function_definition",
-      "name": "functionName",  // Optional for anonymous functions
-      "definitions": [/* List of function_definition_body nodes */],
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "function_definition",
-      "name": "add",
-      "definitions": [
-          {
-              "parameters": [],
-              "guard": null,
-              "foreign": false,
-              "body": {"type": "number", "value": "0", "line": 1, "column": 15},
-              "line": 1,
-              "column": 4
-          },
-          {
-              "parameters": [{"type": "identifier", "value": "a", "line": 2, "column": 24}],
-              "guard": null,
-              "foreign": false,
-              "body": {"type": "identifier", "value": "a", "line": 2, "column": 30},
-              "line": 1,
-              "column": 4
-          },
-          /* Additional definitions */
-      ],
-      "line": 1,
-      "column": 4
-  }
-  ```
-
-### **7.3. Function Definition Body Node**
-
-Represents a single definition within a function, accommodating different arities and optional guards.
-
-- **Structure:**
-
-  ```json
-  {
-      "parameters": [/* List of parameter nodes */],
-      "guard": {/* Optional comparison node */},
-      "foreign": false,
-      "body": {/* Expression node */},
-      "line": 1,
-      "column": 4
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "parameters": [{"type": "identifier", "value": "n", "line": 1, "column": 9}],
-      "guard": {
-          "type": "comparison",
-          "operator": ">",
-          "left": {"type": "identifier", "value": "n", "line": 1, "column": 17},
-          "right": {"type": "number", "value": "1", "line": 1, "column": 21},
-          "line": 1,
-          "column": 19
-      },
-      "foreign": false,
-      "body": {
-          "type": "operator",
-          "operator": "*",
-          "left": {"type": "identifier", "value": "n", "line": 1, "column": 25},
-          "right": {
-              "type": "function_call",
-              "name": "fact",
-              "arguments": [
-                  {
-                      "type": "operator",
-                      "operator": "-",
-                      "left": {"type": "identifier", "value": "n", "line": 1, "column": 35},
-                      "right": {"type": "number", "value": "1", "line": 1, "column": 39},
-                      "line": 1,
-                      "column": 37
-                  }
-              ],
-              "line": 1,
-              "column": 30
-          },
-          "line": 1,
-          "column": 25
-      },
-      "line": 1,
-      "column": 4
-  }
-  ```
-
-### **7.4. Assignment Node**
-
-Represents the assignment of a value to a variable.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "assignment",
-      "identifier": "variableName",
-      "value": {/* Expression node */},
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "assignment",
-      "identifier": "start",
-      "value": {"type": "number", "value": "10", "line": 2, "column": 5},
-      "line": 2,
-      "column": 1
-  }
-  ```
-
-### **7.5. Operator Node**
-
-Represents binary operations like arithmetic and logical operations.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "operator",
-      "operator": "+",
-      "left": {/* Left operand expression node */},
-      "right": {/* Right operand expression node */},
-      "line": 1,
-      "column": 3
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "operator",
-      "operator": "*",
-      "left": {"type": "identifier", "value": "n", "line": 1, "column": 25},
-      "right": {"type": "function_call", "name": "fact", "arguments": [/* Arguments */]},
-      "line": 1,
-      "column": 28
-  }
-  ```
-
-### **7.6. Comparison Node**
-
-Represents comparison operations.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "comparison",
-      "operator": ">",
-      "left": {/* Left operand expression node */},
-      "right": {/* Right operand expression node */},
-      "line": 1,
-      "column": 19
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "comparison",
-      "operator": ">",
-      "left": {"type": "identifier", "value": "n", "line": 1, "column": 17},
-      "right": {"type": "number", "value": "1", "line": 1, "column": 21},
-      "line": 1,
-      "column": 19
-  }
-  ```
-
-### **7.7. Function Call Node**
-
-Represents the invocation of a function with arguments.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "function_call",
-      "name": "functionName",
-      "arguments": [/* List of expression nodes */],
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "function_call",
-      "name": "fact",
-      "arguments": [
-          {
-              "type": "operator",
-              "operator": "-",
-              "left": {"type": "identifier", "value": "n", "line": 1, "column": 35},
-              "right": {"type": "number", "value": "1", "line": 1, "column": 39},
-              "line": 1,
-              "column": 37
-          }
-      ],
-      "line": 1,
-      "column": 30
-  }
-  ```
-
-### **7.8. Delay Expression Node**
-
-Represents a computation that is delayed for optimized execution.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "delay",
-      "expression": {/* Expression node */},
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "delay",
-      "expression": {"type": "number", "value": "42", "line": 1, "column": 7},
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-### **7.9. Range Expression Node**
-
-Represents a range from a start to an end value.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "range",
-      "start": {/* Start expression node */},
-      "end": {/* End expression node */}
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "range",
-      "start": {"type": "number", "value": "1", "line": 1, "column": 1},
-      "end": {"type": "number", "value": "10", "line": 1, "column": 4}
-  }
-  ```
-
-### **7.10. List Pattern Node**
-
-Represents pattern matching for list destructuring with support for rest elements.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "list_pattern",
-      "elements": [/* List of pattern element nodes */]
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "list_pattern",
-      "elements": [
-          {"type": "identifier", "value": "first", "line": 1, "column": 2},
-          {"type": "rest", "value": "rest", "line": 1, "column": 9}
-      ]
-  }
-  ```
-
-### **7.11. Pattern Element Nodes**
-
-#### **7.11.1. Identifier Pattern Element**
-
-Represents an individual identifier in a pattern.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "identifier",
-      "value": "identifierName",
-      "line": 1,
-      "column": 2
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "identifier",
-      "value": "first",
-      "line": 1,
-      "column": 2
-  }
-  ```
-
-#### **7.11.2. Rest Pattern Element**
-
-Represents a rest pattern in list destructuring, capturing remaining elements.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "rest",
-      "value": "restVariable",
-      "line": 1,
-      "column": 9
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "rest",
-      "value": "rest",
-      "line": 1,
-      "column": 9
-  }
-  ```
-
-### **7.12. String Literal Nodes**
-
-#### **7.12.1. String Literal**
-
-Represents a standard string with processed escape sequences.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "string",
-      "value": "Hello, World!",
-      "line": 1,
-      "column": 21
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "string",
-      "value": "hello",
-      "line": 1,
-      "column": 26
-  }
-  ```
-
-#### **7.12.2. Raw String Literal**
-
-Represents a raw string where escape sequences are preserved.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "raw_string",
-      "value": "[A-Z]+\\n",
-      "line": 1,
-      "column": 7
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "raw_string",
-      "value": "[A-Z]+\\n",
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-### **7.13. Identifier Node**
-
-Represents a variable or function name.
-
-- **Structure:**
-
-  ```json
-  {
-      "type": "identifier",
-      "value": "variableName",
-      "line": 1,
-      "column": 1
-  }
-  ```
-
-- **Example:**
-
-  ```json
-  {
-      "type": "identifier",
-      "value": "n",
-      "line": 1,
-      "column": 25
-  }
-  ```
-
----
-
-## **8. Detailed Parsing Process**
-
-The GENIA Parser follows a systematic approach to convert tokens into an AST. Here's an in-depth look at its parsing mechanism.
-
-### **8.1. Entry Point: `parse` Function**
-
-The `parse` function serves as the primary entry point, orchestrating the tokenization and parsing processes.
-
-- **Flow:**
-  
-  1. **Tokenization:** The Lexer processes the source code, producing a sequence of tokens.
-  2. **Parsing:** The Parser consumes the tokens, invoking the `parse` method to generate the AST.
-  3. **Result:** Returns the AST for further processing by the interpreter or compiler.
-
-- **Example:**
-
-  ```python
-  def parse(code):
-      lexer = Lexer(code)
-      tokens = lexer.tokenize()
-  
-      parser = Parser(tokens)
-      ast = parser.parse()
-      return ast
-  ```
-
-### **8.2. Parsing Statements and Expressions**
-
-The Parser distinguishes between different types of statements—function definitions, assignments, and expressions—ensuring each is parsed correctly.
-
-#### **8.2.1. Statement Parsing**
-
-- **Function Definitions:** Detected by the `fn` keyword.
-- **Assignments:** Identified by an `IDENTIFIER` followed by an `=` operator.
-- **Expressions:** All other constructs are treated as expressions.
-
-- **Method:**
-
-  ```python
-  def statement(self):
-      # Logic to determine and parse the type of statement
-      # Returns the corresponding AST node
-  ```
-
-#### **8.2.2. Expression Parsing**
-
-Expressions are parsed based on operator precedence, ensuring accurate hierarchical representation in the AST.
-
-- **Method:**
-
-  ```python
-  def expression(self, precedence=0):
-      # Recursive parsing based on operator precedence
-      # Returns the corresponding AST node
-  ```
-
-- **Operator Precedence:**
-  
-  1. **Highest:** `*`, `/`
-  2. **Middle:** `+`, `-`
-  3. **Lower:** Comparison operators (`==`, `!=`, `>`, `<`, `>=`, `<=`)
-  4. **Lowest:** Assignment `=`
-
-#### **8.2.3. Function Calls**
-
-Function calls are parsed by identifying an `IDENTIFIER` followed by parentheses containing arguments.
-
-- **Method:**
-
-  ```python
-  def function_call(self, function_name, line, column):
-      # Parses function arguments and returns a function_call AST node
-  ```
-
-#### **8.2.4. Delay Expressions**
-
-Delay expressions are recognized by the `delay` keyword followed by an expression within parentheses.
-
-- **Method:**
-
-  ```python
-  def delay_expression(self):
-      # Parses the expression inside delay(...) and returns a delay AST node
-  ```
-
-#### **8.2.5. Range Expressions**
-
-Ranges are defined using the `start..end` syntax, representing a span from `start` to `end`.
-
-- **Method:**
-
-  ```python
-  def expression(self, precedence=0):
-      # Detects '..' operator and parses start and end expressions
-      # Returns a range AST node
-  ```
-
-#### **8.2.6. List Patterns**
-
-List patterns support destructuring with the ability to capture remaining elements using rest patterns (`..rest`).
-
-- **Method:**
-
-  ```python
-  def parse_list_pattern(self):
-      # Parses elements within list patterns, handling rest elements
-      # Returns a list_pattern AST node
-  ```
-
-### **8.3. Handling Function Definitions**
-
-GENIA supports multi-arity and guarded function definitions, enabling functions to have multiple behaviors based on the number of arguments or specific conditions.
-
-- **Parsing Steps:**
-  
-  1. **Detect `fn` Keyword:** Indicates the start of a function definition.
-  2. **Parse Function Name:** Required for named functions; anonymous functions have `None` as the name.
-  3. **Parse Parameters:** Can be a list of identifiers or a list pattern for destructuring.
-  4. **Parse Optional Guard:** Introduced by the `when` keyword, specifying conditions for the function definition.
-  5. **Parse Function Body:** The expression or group of statements that define the function's behavior.
-  6. **Handle Multi-arity Definitions:** Functions can have multiple definitions separated by the `|` operator, each with different parameters or guards.
-
-- **Example:**
-
-  ```genia
-  fn add() -> 0
-  | (a) -> a
-  | (a, b) -> a + b
-  ```
-
-  - **AST Representation:**
-
+- **Description**: The root node representing the entire GENIA program.
+- **Structure**:
     ```json
     {
-        "type": "function_definition",
-        "name": "add",
-        "definitions": [
-            {
-                "parameters": [],
-                "guard": null,
-                "foreign": false,
-                "body": {"type": "number", "value": "0", "line": 1, "column": 15},
-                "line": 1,
-                "column": 4
-            },
-            {
-                "parameters": [{"type": "identifier", "value": "a", "line": 2, "column": 24}],
-                "guard": null,
-                "foreign": false,
-                "body": {"type": "identifier", "value": "a", "line": 2, "column": 30},
-                "line": 1,
-                "column": 4
-            },
-            {
-                "parameters": [
-                    {"type": "identifier", "value": "a", "line": 3, "column": 24},
-                    {"type": "identifier", "value": "b", "line": 3, "column": 27}
-                ],
-                "guard": null,
-                "foreign": false,
-                "body": {
-                    "type": "operator",
-                    "operator": "+",
-                    "left": {"type": "identifier", "value": "a", "line": 3, "column": 33},
-                    "right": {"type": "identifier", "value": "b", "line": 3, "column": 37},
-                    "line": 3,
-                    "column": 35
-                },
-                "line": 1,
-                "column": 4
-            }
-        ],
-        "line": 1,
-        "column": 4
+        "type": "program",
+        "body": [ /* Array of statements */ ]
     }
     ```
 
-### **8.4. Foreign Function Interface (FFI)**
+#### FunctionDefinition
 
-GENIA allows integrating external functions through the FFI, enabling the use of functions defined in other languages or libraries.
+- **Description**: Represents a function definition.
+- **Structure**:
+    ```json
+    {
+        "type": "function_definition",
+        "name": "functionName",
+        "definitions": [ /* Array of FunctionArity */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-- **Syntax:**
+#### FunctionArity
 
-  ```genia
-  fn rem(x, y) -> foreign "math.remainder"
-  ```
+- **Description**: Represents a single arity (overload) of a function.
+- **Structure**:
+    ```json
+    {
+        "parameters": [ /* Array of Patterns */ ],
+        "guard": { /* Expression */ } | null,
+        "body": { /* Expression or GroupedStatements */ },
+        "foreign": Boolean,
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-- **Parsing Steps:**
-  
-  1. **Detect `foreign` Keyword:** Indicates that the function is defined externally.
-  2. **Parse Target:** A string specifying the external function's location (e.g., `"math.remainder"`).
-  3. **Resolve Function:** The parser attempts to import and verify the external function's existence and callability.
+#### AnonymousFunction
 
-- **AST Representation:**
+- **Description**: Represents an anonymous (lambda) function.
+- **Structure**:
+    ```json
+    {
+        "type": "anonymous_function",
+        "parameters": [ /* Array of Patterns */ ],
+        "body": { /* Expression */ },
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-  ```json
-  {
-      "type": "function_definition",
-      "name": "rem",
-      "definitions": [
-          {
-              "parameters": [
-                  {"type": "identifier", "value": "x", "line": 1, "column": 8},
-                  {"type": "identifier", "value": "y", "line": 1, "column": 10}
-              ],
-              "guard": null,
-              "foreign": true,
-              "body": math.remainder,  // Reference to the external function
-              "line": 1,
-              "column": 4
-          }
-      ],
-      "line": 1,
-      "column": 4
-  }
-  ```
+#### Parameters
 
----
+- **Description**: Represents the parameters of a function.
+- **Structure**:
+    ```json
+    {
+        "type": "parameters",
+        "patterns": [ /* Array of Patterns */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-## **9. Handling Metadata: Line and Column Numbers**
+#### Patterns
 
-Accurate tracking of `line` and `column` numbers is crucial for error reporting, debugging, and enhancing the development experience.
+Patterns are used in function parameters to destructure inputs.
 
-### **9.1. Metadata in AST Nodes**
+##### Identifier Pattern
 
-Each AST node includes `line` and `column` fields indicating where the corresponding construct appears in the source code.
+- **Description**: A simple identifier.
+- **Structure**:
+    ```json
+    {
+        "type": "identifier",
+        "value": "identifierName"
+    }
+    ```
 
-- **Purpose:**
-  
-  - **Error Reporting:** Helps in pinpointing the exact location of syntax or runtime errors.
-  - **Debugging:** Assists developers in navigating the source code based on AST nodes.
-  - **Tooling:** Enables features like code highlighting, refactoring, and more.
+##### ListPattern
 
-- **Consistency:** Ensure that every AST node captures accurate `line` and `column` information as provided by the Lexer.
+- **Description**: A pattern matching a list structure.
+- **Structure**:
+    ```json
+    {
+        "type": "list_pattern",
+        "elements": [ /* Array of Patterns or Spread */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-### **9.2. Managing Metadata in Tests**
+##### Spread
 
-When writing unit tests for the parser, discrepancies in `line` and `column` numbers can lead to assertion failures. To streamline testing:
+- **Description**: Represents a spread operator within a pattern.
+- **Structure**:
+    ```json
+    {
+        "type": "spread",
+        "value": "identifierName"
+    }
+    ```
 
-- **Strip Metadata for Structural Tests:** Use helper functions to remove `line` and `column` fields when the exact positioning isn't critical.
+##### Wildcard
 
-  ```python
-  def strip_metadata(ast):
-      """
-      Recursively remove 'line' and 'column' keys from the AST.
-      """
-      if isinstance(ast, dict):
-          return {k: strip_metadata(v) for k, v in ast.items() if k not in {'line', 'column'}}
-      elif isinstance(ast, list):
-          return [strip_metadata(item) for item in ast]
-      else:
-          return ast
-  ```
+- **Description**: Represents a wildcard (`_`) in patterns.
+- **Structure**:
+    ```json
+    {
+        "type": "wildcard"
+    }
+    ```
 
-- **Use Accurate Metadata for Positional Tests:** When testing specific error messages or position-dependent features, include `line` and `column` in the expected AST.
+#### Expressions
 
----
+Expressions are the building blocks of GENIA code, representing computations, function calls, literals, etc.
 
-## **10. Example ASTs**
+##### Number
 
-To illustrate how various GENIA constructs are represented in the AST, here are several examples based on the updated `test_parser.py`.
+- **Description**: Represents a numeric literal.
+- **Structure**:
+    ```json
+    {
+        "type": "number",
+        "value": "numericValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-### **10.1. Simple Expression Parsing**
+##### String
 
-**Code:**
+- **Description**: Represents a string literal.
+- **Structure**:
+    ```json
+    {
+        "type": "string",
+        "value": "stringValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-```genia
-1 + 2 * 3
-```
+##### RawString
 
-**AST:**
+- **Description**: Represents a raw string literal.
+- **Structure**:
+    ```json
+    {
+        "type": "raw_string",
+        "value": "rawStringValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
 
-```json
-[
+##### Identifier
+
+- **Description**: Represents a variable or function identifier.
+- **Structure**:
+    ```json
+    {
+        "type": "identifier",
+        "value": "identifierName",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Operator
+
+- **Description**: Represents an operation between expressions.
+- **Structure**:
+    ```json
     {
         "type": "operator",
-        "operator": "+",
-        "left": {"type": "number", "value": "1", "line": 1, "column": 1},
-        "right": {
-            "type": "operator",
-            "operator": "*",
-            "left": {"type": "number", "value": "2", "line": 1, "column": 5},
-            "right": {"type": "number", "value": "3", "line": 1, "column": 9},
-            "line": 1,
-            "column": 7
-        },
-        "line": 1,
-        "column": 3
+        "operator": "operatorSymbol",
+        "left": { /* Left Expression */ },
+        "right": { /* Right Expression */ },
+        "operand": { /* Operand Expression, for unary operators */ },
+        "line": Number,
+        "column": Number
     }
-]
-```
+    ```
+    - **Binary Operators**: Use `left` and `right`.
+    - **Unary Operators**: Use `operand`.
 
-### **10.2. Function Call in Expression**
+##### FunctionCall
 
-**Code:**
-
-```genia
-n * fact(n - 1)
-```
-
-**AST:**
-
-```json
-[
-    {
-        "type": "operator",
-        "operator": "*",
-        "left": {"type": "identifier", "value": "n", "line": 1, "column": 1},
-        "right": {
-            "type": "function_call",
-            "name": "fact",
-            "arguments": [
-                {
-                    "type": "operator",
-                    "operator": "-",
-                    "left": {"type": "identifier", "value": "n", "line": 1, "column": 10},
-                    "right": {"type": "number", "value": "1", "line": 1, "column": 14},
-                    "line": 1,
-                    "column": 12
-                }
-            ],
-            "line": 1,
-            "column": 5
-        },
-        "line": 1,
-        "column": 3
-    }
-]
-```
-
-### **10.3. Custom Function Call with Multiple Arguments**
-
-**Code:**
-
-```genia
-custom_function(42, 'hello', another_var);
-```
-
-**AST:**
-
-```json
-[
+- **Description**: Represents a function call.
+- **Structure**:
+    ```json
     {
         "type": "function_call",
-        "name": "custom_function",
-        "arguments": [
-            {"type": "number", "value": "42", "line": 1, "column": 17},
-            {"type": "string", "value": "hello", "line": 1, "column": 26},
-            {"type": "identifier", "value": "another_var", "line": 1, "column": 33}
-        ],
-        "line": 1,
-        "column": 1
+        "name": "functionName",
+        "arguments": [ /* Array of Expressions */ ],
+        "line": Number,
+        "column": Number
     }
-]
-```
+    ```
 
-### **10.4. Multi-arity Function Definition**
+##### SpreadOperator
 
-**Code:**
+- **Description**: Represents a spread operator in expressions.
+- **Structure**:
+    ```json
+    {
+        "type": "spread",
+        "value": "identifierName"
+    }
+    ```
+
+##### Delay
+
+- **Description**: Represents a delayed (lazy) expression.
+- **Structure**:
+    ```json
+    {
+        "type": "delay",
+        "expression": { /* Expression */ },
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Foreign
+
+- **Description**: Represents a foreign (external) function or variable.
+- **Structure**:
+    ```json
+    {
+        "type": "foreign",
+        "value": "module.functionName",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### GroupedStatements
+
+- **Description**: Represents a group of statements enclosed in parentheses.
+- **Structure**:
+    ```json
+    {
+        "type": "grouped_statements",
+        "statements": [ /* Array of Statements */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+    **Notes:**
+    - Grouped statements allow multiple expressions within function bodies, separated by semicolons (`;`).
+    - If a group contains only a single statement, the `grouped_statements` node can be omitted, and the statement can be directly used as the body.
+
+### Metadata
+
+Each AST node includes optional `line` and `column` properties to indicate its position in the source code. This metadata aids in error reporting and debugging.
+
+---
+
+## Parser Behavior
+
+### Parsing Strategy
+
+GENIA's parser employs a **recursive descent** parsing strategy, leveraging a **token queue** to process tokens sequentially. The parser interprets tokens based on their type and value, constructing the AST by invoking specific parsing methods tailored to handle various language constructs.
+
+#### Key Parsing Methods
+
+- **`parse`**: Entry point for parsing GENIA code; initiates the parsing process.
+- **`program`**: Parses the entire program, consisting of multiple statements.
+- **`statement`**: Parses individual statements within the program.
+- **`expression`**: Parses expressions, handling operator precedence and associativity.
+- **`nud` (Null Denotation)**: Handles tokens that can start expressions.
+- **`group_statement`**: Parses statements within grouped contexts (e.g., inside `()`).
+
+### Error Handling
+
+The parser is designed to detect and report syntax errors with descriptive messages, including the line and column numbers where the error occurred. Common syntax errors include:
+
+- **Unexpected Tokens**: Tokens that don't fit the expected grammar at a given position.
+- **Unmatched Delimiters**: Missing closing parentheses or brackets.
+- **Invalid Pattern Syntax**: Incorrect use of pattern matching constructs.
+- **Missing Arrows or Operators**: For example, missing `->` in function definitions.
+- **Incorrect Spread Operator Usage**: Spread operators not followed by identifiers.
+
+Upon encountering an error, the parser raises a `SyntaxError` with an appropriate message, halting the parsing process.
+
+---
+
+## Abstract Syntax Tree (AST) Specification
+
+The AST is a tree representation of the syntactic structure of GENIA code. Each node in the AST represents a construct occurring in the source code.
+
+### AST Node Types
+
+The following outlines the various AST node types used in GENIA, along with their properties.
+
+#### Program
+
+- **Description**: The root node representing the entire GENIA program.
+- **Structure**:
+    ```json
+    {
+        "type": "program",
+        "body": [ /* Array of statements */ ]
+    }
+    ```
+
+#### FunctionDefinition
+
+- **Description**: Represents a function definition.
+- **Structure**:
+    ```json
+    {
+        "type": "function_definition",
+        "name": "functionName",
+        "definitions": [ /* Array of FunctionArity */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+#### FunctionArity
+
+- **Description**: Represents a single arity (overload) of a function.
+- **Structure**:
+    ```json
+    {
+        "parameters": [ /* Array of Patterns */ ],
+        "guard": { /* Expression */ } | null,
+        "body": { /* Expression or GroupedStatements */ },
+        "foreign": Boolean,
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+#### AnonymousFunction
+
+- **Description**: Represents an anonymous (lambda) function.
+- **Structure**:
+    ```json
+    {
+        "type": "anonymous_function",
+        "parameters": [ /* Array of Patterns */ ],
+        "body": { /* Expression */ },
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+#### Parameters
+
+- **Description**: Represents the parameters of a function.
+- **Structure**:
+    ```json
+    {
+        "type": "parameters",
+        "patterns": [ /* Array of Patterns */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+#### Patterns
+
+Patterns are used in function parameters to destructure inputs.
+
+##### Identifier Pattern
+
+- **Description**: A simple identifier.
+- **Structure**:
+    ```json
+    {
+        "type": "identifier",
+        "value": "identifierName"
+    }
+    ```
+
+##### ListPattern
+
+- **Description**: A pattern matching a list structure.
+- **Structure**:
+    ```json
+    {
+        "type": "list_pattern",
+        "elements": [ /* Array of Patterns or Spread */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Spread
+
+- **Description**: Represents a spread operator within a pattern.
+- **Structure**:
+    ```json
+    {
+        "type": "spread",
+        "value": "identifierName"
+    }
+    ```
+
+##### Wildcard
+
+- **Description**: Represents a wildcard (`_`) in patterns.
+- **Structure**:
+    ```json
+    {
+        "type": "wildcard"
+    }
+    ```
+
+#### Expressions
+
+Expressions are the building blocks of GENIA code, representing computations, function calls, literals, etc.
+
+##### Number
+
+- **Description**: Represents a numeric literal.
+- **Structure**:
+    ```json
+    {
+        "type": "number",
+        "value": "numericValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### String
+
+- **Description**: Represents a string literal.
+- **Structure**:
+    ```json
+    {
+        "type": "string",
+        "value": "stringValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### RawString
+
+- **Description**: Represents a raw string literal.
+- **Structure**:
+    ```json
+    {
+        "type": "raw_string",
+        "value": "rawStringValue",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Identifier
+
+- **Description**: Represents a variable or function identifier.
+- **Structure**:
+    ```json
+    {
+        "type": "identifier",
+        "value": "identifierName",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Operator
+
+- **Description**: Represents an operation between expressions.
+- **Structure**:
+    ```json
+    {
+        "type": "operator",
+        "operator": "operatorSymbol",
+        "left": { /* Left Expression */ },
+        "right": { /* Right Expression */ },
+        "operand": { /* Operand Expression, for unary operators */ },
+        "line": Number,
+        "column": Number
+    }
+    ```
+    - **Binary Operators**: Use `left` and `right`.
+    - **Unary Operators**: Use `operand`.
+
+##### FunctionCall
+
+- **Description**: Represents a function call.
+- **Structure**:
+    ```json
+    {
+        "type": "function_call",
+        "name": "functionName",
+        "arguments": [ /* Array of Expressions */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### SpreadOperator
+
+- **Description**: Represents a spread operator in expressions.
+- **Structure**:
+    ```json
+    {
+        "type": "spread",
+        "value": "identifierName"
+    }
+    ```
+
+##### Delay
+
+- **Description**: Represents a delayed (lazy) expression.
+- **Structure**:
+    ```json
+    {
+        "type": "delay",
+        "expression": { /* Expression */ },
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### Foreign
+
+- **Description**: Represents a foreign (external) function or variable.
+- **Structure**:
+    ```json
+    {
+        "type": "foreign",
+        "value": "module.functionName",
+        "line": Number,
+        "column": Number
+    }
+    ```
+
+##### GroupedStatements
+
+- **Description**: Represents a group of statements enclosed in parentheses.
+- **Structure**:
+    ```json
+    {
+        "type": "grouped_statements",
+        "statements": [ /* Array of Statements */ ],
+        "line": Number,
+        "column": Number
+    }
+    ```
+    **Notes:**
+    - Grouped statements allow multiple expressions within function bodies, separated by semicolons (`;`).
+    - If a group contains only a single statement, the `grouped_statements` node can be omitted, and the statement can be directly used as the body.
+
+### Metadata
+
+Each AST node includes optional `line` and `column` properties to indicate its position in the source code. This metadata aids in error reporting and debugging.
+
+---
+
+## Examples
+
+Below are several examples illustrating how GENIA code snippets are parsed into their corresponding AST structures.
+
+### Function Definition with Pattern Matching
+
+**GENIA Code:**
 
 ```genia
-fn add() -> 0
-| (a) -> a
-| (a, b) -> a + b
+fn unpack([a, ..rest]) -> a;
 ```
 
 **AST:**
@@ -1121,41 +877,23 @@ fn add() -> 0
 [
     {
         "type": "function_definition",
-        "name": "add",
+        "name": "unpack",
         "definitions": [
             {
-                "foreign": false,
-                "parameters": [],
-                "guard": null,
-                "body": {"type": "number", "value": "0", "line": 1, "column": 15},
-                "line": 1,
-                "column": 4
-            },
-            {
-                "foreign": false,
                 "parameters": [
-                    {"type": "identifier", "value": "a", "line": 2, "column": 24}
+                    {
+                        "type": "list_pattern",
+                        "elements": [
+                            {"type": "identifier", "value": "a"},
+                            {"type": "spread", "value": "rest"}
+                        ],
+                        "line": 1,
+                        "column": 10
+                    }
                 ],
                 "guard": null,
-                "body": {"type": "identifier", "value": "a", "line": 2, "column": 30},
-                "line": 1,
-                "column": 4
-            },
-            {
+                "body": {"type": "identifier", "value": "a"},
                 "foreign": false,
-                "parameters": [
-                    {"type": "identifier", "value": "a", "line": 3, "column": 24},
-                    {"type": "identifier", "value": "b", "line": 3, "column": 27}
-                ],
-                "guard": null,
-                "body": {
-                    "type": "operator",
-                    "operator": "+",
-                    "left": {"type": "identifier", "value": "a", "line": 3, "column": 33},
-                    "right": {"type": "identifier", "value": "b", "line": 3, "column": 37},
-                    "line": 3,
-                    "column": 35
-                },
                 "line": 1,
                 "column": 4
             }
@@ -1166,12 +904,14 @@ fn add() -> 0
 ]
 ```
 
-### **10.5. Function with Guard**
+---
 
-**Code:**
+### Nested Functions
+
+**GENIA Code:**
 
 ```genia
-fn fact(n) when n > 1 -> n * fact(n - 1)
+fn outer() -> (fn inner() -> 42; inner());
 ```
 
 **AST:**
@@ -1180,46 +920,118 @@ fn fact(n) when n > 1 -> n * fact(n - 1)
 [
     {
         "type": "function_definition",
-        "name": "fact",
+        "name": "outer",
+        "definitions": [
+            {
+                "parameters": [],
+                "guard": null,
+                "body": {
+                    "type": "grouped_statements",
+                    "statements": [
+                        {
+                            "type": "function_definition",
+                            "name": "inner",
+                            "definitions": [
+                                {
+                                    "parameters": [],
+                                    "guard": null,
+                                    "body": {"type": "number", "value": "42"},
+                                    "foreign": false,
+                                    "line": 1,
+                                    "column": 13
+                                }
+                            ],
+                            "line": 1,
+                            "column": 9
+                        },
+                        {
+                            "type": "function_call",
+                            "name": "inner",
+                            "arguments": [],
+                            "line": 1,
+                            "column": 24
+                        }
+                    ],
+                    "line": 1,
+                    "column": 4
+                },
+                "foreign": false,
+                "line": 1,
+                "column": 4
+            }
+        ],
+        "line": 1,
+        "column": 4
+    }
+]
+```
+
+---
+
+### Recursive Functions
+
+**GENIA Code:**
+
+```genia
+fn factorial(n) when n > 1 -> n * factorial(n - 1) | (n) -> 1;
+```
+
+**AST:**
+
+```json
+[
+    {
+        "type": "function_definition",
+        "name": "factorial",
         "definitions": [
             {
                 "parameters": [
-                    {"type": "identifier", "value": "n", "line": 1, "column": 9}
+                    {"type": "identifier", "value": "n"}
                 ],
                 "guard": {
-                    "type": "comparison",
+                    "type": "operator",
                     "operator": ">",
-                    "left": {"type": "identifier", "value": "n", "line": 1, "column": 17},
-                    "right": {"type": "number", "value": "1", "line": 1, "column": 21},
+                    "left": {"type": "identifier", "value": "n"},
+                    "right": {"type": "number", "value": "1"},
                     "line": 1,
-                    "column": 19
+                    "column": 16
                 },
-                "foreign": false,
                 "body": {
                     "type": "operator",
                     "operator": "*",
-                    "left": {"type": "identifier", "value": "n", "line": 1, "column": 25},
+                    "left": {"type": "identifier", "value": "n"},
                     "right": {
                         "type": "function_call",
-                        "name": "fact",
+                        "name": "factorial",
                         "arguments": [
                             {
                                 "type": "operator",
                                 "operator": "-",
-                                "left": {"type": "identifier", "value": "n", "line": 1, "column": 35},
-                                "right": {"type": "number", "value": "1", "line": 1, "column": 39},
+                                "left": {"type": "identifier", "value": "n"},
+                                "right": {"type": "number", "value": "1"},
                                 "line": 1,
-                                "column": 37
+                                "column": 28
                             }
                         ],
                         "line": 1,
-                        "column": 30
+                        "column": 21
                     },
                     "line": 1,
-                    "column": 25
+                    "column": 20
                 },
+                "foreign": false,
                 "line": 1,
                 "column": 4
+            },
+            {
+                "parameters": [
+                    {"type": "identifier", "value": "n"}
+                ],
+                "guard": null,
+                "body": {"type": "number", "value": "1"},
+                "foreign": false,
+                "line": 1,
+                "column": 48
             }
         ],
         "line": 1,
@@ -1228,12 +1040,14 @@ fn fact(n) when n > 1 -> n * fact(n - 1)
 ]
 ```
 
-### **10.6. Foreign Function Interface (FFI) Function Definition**
+---
 
-**Code:**
+### Function Calls with Spread Operators
+
+**GENIA Code:**
 
 ```genia
-fn rem(x, y) -> foreign "math.remainder"
+fn combine_lists(list1, list2) -> merge(...list1, ...list2);
 ```
 
 **AST:**
@@ -1242,16 +1056,25 @@ fn rem(x, y) -> foreign "math.remainder"
 [
     {
         "type": "function_definition",
-        "name": "rem",
+        "name": "combine_lists",
         "definitions": [
             {
                 "parameters": [
-                    {"type": "identifier", "value": "x", "line": 1, "column": 8},
-                    {"type": "identifier", "value": "y", "line": 1, "column": 10}
+                    {"type": "identifier", "value": "list1"},
+                    {"type": "identifier", "value": "list2"}
                 ],
                 "guard": null,
-                "foreign": true,
-                "body": math.remainder,  // Reference to the external function
+                "body": {
+                    "type": "function_call",
+                    "name": "merge",
+                    "arguments": [
+                        {"type": "spread", "value": "list1"},
+                        {"type": "spread", "value": "list2"}
+                    ],
+                    "line": 1,
+                    "column": 29
+                },
+                "foreign": false,
                 "line": 1,
                 "column": 4
             }
@@ -1262,135 +1085,138 @@ fn rem(x, y) -> foreign "math.remainder"
 ]
 ```
 
-*Note:* The `body` field references the actual external function (`math.remainder`), ensuring seamless integration via FFI.
+---
 
-### **10.7. Range Expression**
+## Testing
 
-**Code:**
+A robust test suite ensures that the GENIA parser correctly interprets the language's syntax and constructs. The following outlines the approach to testing the parser.
 
-```genia
-1..10
+### Unit Tests Overview
+
+Unit tests are written using **pytest** and cover various aspects of the GENIA language, including valid syntax, error handling, and edge cases.
+
+#### Categories of Tests
+
+1. **Function Definitions**
+2. **Expressions and Operators**
+3. **Variable Assignments and Scope**
+4. **Patterns**
+5. **List and Spread Expressions**
+6. **Foreign Function Integrations**
+7. **Delayed Expressions**
+8. **Error Handling and Edge Cases**
+9. **Advanced Pattern Matching**
+10. **Recursive Function Definitions**
+11. **Complex Expressions**
+12. **Function Calls and Arguments**
+13. **Spread Operator in Various Contexts**
+14. **Comprehensive Pattern Matching**
+15. **Combined Language Features**
+16. **Comprehensive Function Overloading**
+17. **Edge Cases and Robustness**
+18. **Integration with Other Constructs**
+
+### Helper Functions
+
+To facilitate AST comparisons and streamline testing, implement helper functions such as `strip_metadata`, which removes line and column information from AST nodes for structural comparisons.
+
+#### `strip_metadata` Function
+
+```python
+def strip_metadata(ast):
+    """
+    Recursively removes 'line' and 'column' keys from the AST for comparison.
+    """
+    if isinstance(ast, dict):
+        return {k: strip_metadata(v) for k, v in ast.items() if k not in ('line', 'column')}
+    elif isinstance(ast, list):
+        return [strip_metadata(item) for item in ast]
+    else:
+        return ast
 ```
 
-**AST:**
+### Example Test Implementation
 
-```json
-[
-    {
-        "type": "range",
-        "start": {"type": "number", "value": "1", "line": 1, "column": 1},
-        "end": {"type": "number", "value": "10", "line": 1, "column": 4}
-    }
-]
+Below is an example of how to implement a unit test for nested function definitions.
+
+#### `test_parser_nested_function_definitions`
+
+```python
+# tests/test_parser.py
+
+def test_parser_nested_function_definitions():
+    code = """
+    fn outer() -> (fn inner() -> 42; inner());
+    """
+    ast = parse(code)
+    
+    expected_ast = [
+        {
+            "type": "function_definition",
+            "name": "outer",
+            "definitions": [
+                {
+                    "parameters": [],
+                    "guard": None,
+                    "body": {
+                        "type": "grouped_statements",
+                        "statements": [
+                            {
+                                "type": "function_definition",
+                                "name": "inner",
+                                "definitions": [
+                                    {
+                                        "parameters": [],
+                                        "guard": None,
+                                        "body": {"type": "number", "value": "42"},
+                                        "foreign": False
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "function_call",
+                                "name": "inner",
+                                "arguments": []
+                            }
+                        ]
+                    },
+                    "foreign": False
+                }
+            ]
+        }
+    ]
+    
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
 ```
 
-### **10.8. List Destructuring**
+**Explanation:**
 
-**Code:**
-
-```genia
-[first, ..rest]
-```
-
-**AST:**
-
-```json
-[
-    {
-        "type": "list_pattern",
-        "elements": [
-            {"type": "identifier", "value": "first", "line": 1, "column": 2},
-            {"type": "rest", "value": "rest", "line": 1, "column": 9}
-        ]
-    }
-]
-```
-
-### **10.9. Dynamic Range with Assignments**
-
-**Code:**
-
-```genia
-start = 10
-end = 15
-start..end
-```
-
-**AST:**
-
-```json
-[
-    {
-        "type": "assignment",
-        "identifier": "start",
-        "value": {"type": "number", "value": "10", "line": 2, "column": 5},
-        "line": 2,
-        "column": 1
-    },
-    {
-        "type": "assignment",
-        "identifier": "end",
-        "value": {"type": "number", "value": "15", "line": 3, "column": 11},
-        "line": 3,
-        "column": 1
-    },
-    {
-        "type": "range",
-        "start": {"type": "identifier", "value": "start", "line": 4, "column": 5},
-        "end": {"type": "identifier", "value": "end", "line": 4, "column": 12}
-    }
-]
-```
+- **Function Definition:** Defines an `outer` function that contains an `inner` function.
+- **AST Comparison:** Uses `strip_metadata` to ignore line and column details, focusing on structural correctness.
 
 ---
 
-## **11. Best Practices and Recommendations**
+## Best Practices
 
-To maintain and extend the GENIA Parser effectively, consider the following best practices:
+To maintain a high-quality parser and ensure its reliability, adhere to the following best practices:
 
-### **11.1. Modular Design**
-
-- **Separation of Concerns:** Organize the parser into distinct modules handling different aspects of parsing (e.g., expressions, statements, patterns).
-- **Reusability:** Design parsing functions to be reusable across various constructs to minimize redundancy.
-
-### **11.2. Comprehensive Error Handling**
-
-- **Descriptive Errors:** Ensure that syntax errors provide clear messages, including expected tokens and the context of the error.
-- **Graceful Recovery:** Where feasible, implement error recovery mechanisms to continue parsing after encountering errors, allowing for the detection of multiple issues in a single pass.
-
-### **11.3. Extensibility**
-
-- **Scalable Grammar:** Design the parser to accommodate future language features with minimal restructuring.
-- **Flexible AST Structure:** Maintain an AST schema that can easily integrate new node types and relationships as the language evolves.
-
-### **11.4. Efficient Token Management**
-
-- **Lookahead Mechanism:** Utilize lookahead judiciously to make parsing decisions without excessive token consumption.
-- **Token Validation:** Validate tokens at each parsing step to ensure consistency and correctness, preventing cascading errors.
-
-### **11.5. Rigorous Testing**
-
-- **Comprehensive Test Coverage:** Continuously expand the test suite to cover new features, edge cases, and potential failure points.
-- **Automated Testing Pipelines:** Integrate tests into continuous integration (CI) pipelines to automatically run them upon code changes, ensuring immediate detection of regressions.
-
-### **11.6. Documentation**
-
-- **Maintain Up-to-date Documentation:** Keep this specification and any additional documentation current with parser updates to facilitate understanding and onboarding.
-- **Inline Comments:** Include descriptive comments within the parser code to elucidate complex parsing logic and decisions.
+1. **Incremental Testing**: Start with simple tests and progressively introduce more complex scenarios to identify and isolate issues effectively.
+2. **Descriptive Test Names**: Use clear and descriptive names for tests to indicate their purpose and the features they validate.
+3. **High Code Coverage**: Aim for comprehensive code coverage, ensuring that all parser branches and language features are tested.
+4. **Edge Case Testing**: Include tests for unusual or extreme inputs to verify the parser's robustness against unexpected scenarios.
+5. **Consistent AST Structures**: Maintain a uniform AST structure across all tests to simplify comparisons and reduce complexity.
+6. **Automated Testing**: Integrate tests into a Continuous Integration (CI) pipeline to automatically execute them on code changes, preventing regressions.
+7. **Comprehensive Documentation**: Document each test's purpose, expected behavior, and any assumptions to facilitate understanding and maintenance.
+8. **Modular Parser Design**: Organize the parser into smaller, manageable components, each responsible for parsing specific language constructs.
+9. **Enhanced Error Messaging**: Provide clear, descriptive, and context-aware error messages to assist developers in debugging and resolving syntax issues.
+10. **AST Validation**: Implement validation mechanisms to ensure that the AST conforms to the expected schema and structure, catching inconsistencies early.
 
 ---
 
-## **12. Conclusion**
+## Conclusion
 
-The GENIA Parser is a robust tool designed to accurately interpret GENIA source code, transforming it into a structured AST that captures the language's semantics and syntax. This comprehensive specification serves as a foundational reference, detailing the parser's capabilities, AST structure, and best practices for maintenance and extension.
+This specification document provides a detailed overview of the GENIA parser and its corresponding Abstract Syntax Tree (AST). By adhering to this specification, developers can ensure that the parser accurately interprets GENIA code, handles complex language features, and maintains robustness through comprehensive testing. Continuous adherence to best practices and regular updates to the specification will facilitate the evolution and scalability of the GENIA language.
 
-**Key Highlights:**
+For further enhancements or queries, refer to the project's documentation or reach out to the development team.
 
-1. **Accurate Parsing:** The parser meticulously handles various language constructs, ensuring the AST precisely mirrors the source code's intent.
-2. **Detailed AST Documentation:** Each AST node type is thoroughly documented, facilitating seamless integration with interpreters, compilers, and development tools.
-3. **Robust Testing Strategy:** An emphasis on comprehensive testing ensures the parser's reliability and resilience against future changes.
-4. **Extensible Architecture:** Designed with future growth in mind, the parser can adapt to evolving language features with ease.
-
-Your commitment to refining the GENIA Parser is instrumental in advancing the GENIA language's capabilities and developer experience. For further assistance, collaboration, or queries, feel free to engage with the development community or reach out to the maintainers.
-
-Happy Parsing!
+**Happy Coding! 🚀**

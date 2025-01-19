@@ -8,6 +8,7 @@ class Parser:
 
     def __init__(self, tokens):
         self.tokens = deque(tokens)
+        print(f"TOKENS {list(self.tokens)}")
         self.PRECEDENCE = {
             'OR': 1,
             'AND': 2,
@@ -67,12 +68,14 @@ class Parser:
             raise self.SyntaxError("Unexpected end of input after 'fn'")
         token_type, func_name, line, column = self.tokens.popleft()
         if token_type != 'IDENTIFIER':
-            raise self.SyntaxError(f"Expected function name after 'fn' at line {line}, column {column}")
-
-        # Expect '(' for parameters
-        if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after function name")
-        token_type, value, line, column = self.tokens.popleft()
+            value = func_name
+            func_name = None
+            
+        else:
+            if not self.tokens:
+                raise self.SyntaxError("Unexpected end of input after function name")
+            token_type, value, line, column = self.tokens.popleft()
+        # Expect (
         if token_type != 'PUNCTUATION' or value != '(':
             raise self.SyntaxError(f"Expected '(' after function name at line {line}, column {column}")
 
@@ -173,46 +176,86 @@ class Parser:
             'name': func_name,
             'definitions': definitions
         }
+  
+
     def parse_pattern(self):
         """
         Parses a pattern in the parameter list.
-        Currently handles list patterns.
+        Handles list patterns, identifiers, wildcards, and literals.
         """
-        token_type, value, line, column = self.tokens.popleft()
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input while parsing pattern")
+        
+        token = self.tokens.popleft()
+        token_type, value, line, column = token.type, token.value, token.line, token.column
+        
         if token_type == 'PUNCTUATION' and value == '[':
             # Start of a list pattern
             elements = []
             while self.tokens:
-                token_type, value, line, column = self.tokens[0]  # Peek
-                if token_type == 'PUNCTUATION' and value == ']':
+                peek_token = self.tokens[0]
+                if peek_token.type == 'PUNCTUATION' and peek_token.value == ']':
                     self.tokens.popleft()  # Consume ']'
                     break
-                elif token_type == 'PUNCTUATION' and value == ',':
+                elif peek_token.type == 'PUNCTUATION' and peek_token.value == ',':
                     self.tokens.popleft()  # Consume ','
                     continue
-                elif token_type == 'IDENTIFIER' and value == '_':
-                    # Wildcard
+                elif peek_token.type == 'IDENTIFIER' and peek_token.value == '_':
                     self.tokens.popleft()  # Consume '_'
                     elements.append({'type': 'wildcard'})
-                elif token_type == 'DOT_DOT':
+                elif peek_token.type == 'DOT_DOT':
                     self.tokens.popleft()  # Consume '..'
-                    # Expect an IDENTIFIER after '..'
                     if not self.tokens:
-                        raise self.SyntaxError(f"Unexpected end of input after '..' in list pattern at line {line}, column {column}")
-                    next_token_type, next_value, next_line, next_column = self.tokens.popleft()
-                    if next_token_type != 'IDENTIFIER':
-                        raise self.SyntaxError(f"Expected identifier after '..' in list pattern at line {next_line}, column {next_column}, but found {next_token_type} '{next_value}'")
-                    elements.append({'type': 'spread', 'value': next_value})
+                        raise self.SyntaxError(f"Unexpected end of input after '..' in list pattern at line {peek_token.line}, column {peek_token.column}")
+                    next_token = self.tokens.popleft()
+                    if next_token.type != 'IDENTIFIER':
+                        raise self.SyntaxError(f"Expected identifier after '..' in list pattern at line {next_token.line}, column {next_token.column}, but found {next_token.type} '{next_token.value}'")
+                    elements.append({'type': 'spread', 'value': next_token.value})
+                elif peek_token.type in {'NUMBER', 'STRING', 'RAW_STRING'}:
+                    # Handle literal patterns within lists
+                    lit_pattern = self.parse_literal_pattern()
+                    elements.append(lit_pattern)
                 else:
-                    # For simplicity, assume only wildcards and spread operators are allowed
-                    raise self.SyntaxError(f"Unexpected token {token_type} {value} in list pattern at line {line}, column {column}")
-
-            return {'type': 'list_pattern', 'elements': elements}
+                    # Handle nested patterns or other expression types if necessary
+                    raise self.SyntaxError(f"Unexpected token {peek_token.type} '{peek_token.value}' in list pattern at line {peek_token.line}, column {peek_token.column}")
+            
+            return {'type': 'list_pattern', 'elements': elements, 'line': line, 'column': column}
+        
+        elif token_type in {'NUMBER', 'STRING', 'RAW_STRING'}:
+            # Handle literal patterns
+            return self.parse_literal_pattern(token)
+        
         elif token_type == 'IDENTIFIER':
-            # Simple identifier pattern
-            return {'type': 'identifier', 'value': value}
+            if value == '_':
+                return {'type': 'wildcard', 'line': line, 'column': column}
+            else:
+                return {'type': 'identifier', 'value': value, 'line': line, 'column': column}
+        
         else:
-            raise self.SyntaxError(f"Unexpected token {token_type} {value} in parameter pattern at line {line}, column {column}")
+            raise self.SyntaxError(f"Unexpected token {token_type} '{value}' in parameter pattern at line {line}, column {column}")
+
+    def parse_literal_pattern(self, token=None):
+        """
+        Parses a literal pattern (NUMBER, STRING, RAW_STRING).
+        """
+        if not token:
+            if not self.tokens:
+                raise self.SyntaxError("Unexpected end of input while parsing literal pattern")
+            token = self.tokens.popleft()
+        token_type, value, line, column = token.type, token.value, token.line, token.column
+        
+        if token_type == 'NUMBER':
+            return {'type': 'number_literal', 'value': int(value), 'line': line, 'column': column}
+        elif token_type == 'STRING':
+            # Remove surrounding quotes and handle escape sequences if necessary
+            string_value = bytes(value[1:-1], "utf-8").decode("unicode_escape")
+            return {'type': 'string_literal', 'value': string_value, 'line': line, 'column': column}
+        elif token_type == 'RAW_STRING':
+            # Remove surrounding quotes without interpreting escape sequences
+            raw_string_value = value[2:-1]  # Assuming raw strings start with r" and end with "
+            return {'type': 'string_literal', 'value': raw_string_value, 'line': line, 'column': column}
+        else:
+            raise self.SyntaxError(f"Unsupported literal type {token_type} in pattern at line {line}, column {column}")
 
     def assignment(self):
         if not self.tokens:
@@ -312,6 +355,15 @@ class Parser:
         """
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
+        elif token_type == 'OPERATOR' and value in {'-', '+'}:
+            # self.tokens.popleft()  # Consume unary operator
+            operand = self.expression()
+            return {
+                    'type': 'unary_operator', 
+                    'operator': value, 
+                    'operand': operand, 
+                    'line': line, 
+                    'column': column}
         elif token_type in {'STRING', 'RAW_STRING'}:
             return {'type': token_type.lower(), 'value': value, 'line': line, 'column': column}
         elif token_type == 'IDENTIFIER':
@@ -396,7 +448,7 @@ class Parser:
                 # Multiple statements, wrap in grouped_statements
                 return {'type': 'grouped_statements', 'statements': statements}
         elif token_type == 'KEYWORD' and value == 'fn':
-            return self.anonymous_function_definition()
+            return self.function_definition()
         elif token_type == 'KEYWORD' and value == 'delay':
             return self.delay_expression()
         elif token_type == 'KEYWORD' and value == 'foreign':
@@ -434,7 +486,7 @@ class Parser:
         if token_type == 'OPERATOR' or token_type == 'COMPARATOR':
             right = self.expression(precedence)
             return {
-                'type': 'operator',
+                'type': token_type.lower(),
                 'operator': value,
                 'left': left,
                 'right': right,
@@ -451,52 +503,6 @@ class Parser:
             }
         else:
             raise self.SyntaxError(f"Unexpected operator {value} at line {line}, column {column}")
-
-    def anonymous_function_definition(self):
-        """
-        Parse an anonymous function definition.
-        """
-        if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after 'fn' keyword.")
-
-        # Expect parameters in parentheses
-        token_type, value, line, column = self.tokens.popleft()
-
-        if token_type != 'PUNCTUATION' or value != '(':
-            raise self.SyntaxError(f"Expected '(' after 'fn' at line {line}, column {column}")
-
-        # Parse parameters
-        parameters = []
-        while self.tokens:
-            token_type, value, line, column = self.tokens.popleft()
-            if token_type == 'PUNCTUATION' and value == ')':
-                break
-            elif token_type == 'IDENTIFIER':
-                parameters.append({'type': 'identifier', 'value': value})
-            elif token_type == 'PUNCTUATION' and value == ',':
-                continue
-            else:
-                raise self.SyntaxError(f"Unexpected token {token_type} {value} in parameter list at line {line}, column {column}")
-
-        # Expect '->'
-        if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after anonymous function parameters.")
-
-        token_type, value, line, column = self.tokens.popleft()
-
-        if token_type != 'ARROW':
-            raise self.SyntaxError(f"Expected '->' after anonymous function parameters at line {line}, column {column}")
-
-        # Parse function body
-        body = self.expression()
-
-        return {
-            'type': 'anonymous_function',
-            'parameters': parameters,
-            'body': body,
-            'line': line,
-            'column': column
-        }
 
     def foreign_expression(self):
         """
