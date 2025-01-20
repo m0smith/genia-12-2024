@@ -15,9 +15,9 @@ class Lexer:
         ('WHITESPACE', r'[ \t]+'),                              # Whitespace
         ('NEWLINE', r'\n'),                                     # Newlines
         ('ARROW', r'->'),                                       # Arrow operator
-        ('DOT_DOT', r'\.\.'),                                   # Double dot
+        # ('DOT_DOT', r'\.\.'),                                   # Double dot
         ('COMPARATOR', r'[<>!]=?'),                             # <, >, <=, >=, !=
-        ('OPERATOR', r'[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
+        ('OPERATOR', r'\.\.|[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
         ('PUNCTUATION', r'[()\[\]{},;|]'),                       # Punctuation
         ('NUMBER', r'\d+'),                                     # Integer numbers
         ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                      # Identifiers with *, +, -, /, ?

@@ -1,4 +1,5 @@
 
+
 import pytest
 import sys
 from pathlib import Path
@@ -6,8 +7,8 @@ from pathlib import Path
 # Add the parent directory to the system path for imports
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from genia.lexer import Lexer
 from genia.parser import Parser
+from genia.lexer import Lexer
 
 def strip_metadata(ast):
     """
@@ -28,6 +29,7 @@ def parse(code):
     parser = Parser(tokens)
     ast = parser.parse()
     return ast
+
 
 def test_expression_parsing():
     code = "1 + 2 * 3"
@@ -95,7 +97,8 @@ def test_function_call_in_expression():
     ]
 
     assert strip_metadata(ast) == strip_metadata(expected_ast)
-    
+
+
 def test_another_expression():
     code = "a + b"
     lexer = Lexer(code)
@@ -143,7 +146,6 @@ def test_custom_function_call():
     ]
 
     assert strip_metadata(ast) == strip_metadata(expected_ast)
-
 
 
 def test_multi_arity_function_definition():
@@ -259,7 +261,8 @@ def test_ffi_simple():
                 {
                     'parameters': [
                         {'type': 'identifier', 'value': 'x', 'line': 1, 'column': 8},
-                        {'type': 'identifier', 'value': 'y', 'line': 1, 'column': 10},
+                        {'type': 'identifier', 'value': 'y',
+                            'line': 1, 'column': 10},
                     ],
                     'guard': None,
                     'body': 'math.remainder',
@@ -280,13 +283,15 @@ def test_range():
     result = parse(code)
     expected = [{
         'type': 'expression_statement',
-        'expression': {
-            'type': 'range',
-            'start': {'type': 'number', 'value': '1', 'line': 1, 'column': 1},
-            'end': {'type': 'number', 'value': '10', 'line': 1, 'column': 4}
-        }
-    }]
+        'expression':
+            {'type': 'operator', 'operator': '..',
+             'left': {'type': 'number', 'value': '1', 'line': 1, 'column': 1},
+             'right': {'type': 'number', 'value': '10', 'line': 1, 'column': 4},
+             'line': 1, 'column': 2}
+    }
+    ]
     assert result == expected
+
 
 def test_list_destructuring():
     code = "[first, ..rest]"
@@ -297,27 +302,31 @@ def test_list_destructuring():
             'type': 'list',
             'elements': [
                 {'type': 'identifier', 'value': 'first', 'line': 1, 'column': 2},
-                {'type': 'spread', 'value': 'rest', 'line': 1, 'column': 9}
+                {'type': 'unary_operator', 'operator': '..', 'line': 1,
+                    'column': 9, 'operand': {'value': 'rest', 'type': "identifier"}}
             ]
         }
     }]
     assert strip_metadata(result) == strip_metadata(expected)
+
 
 def test_list_with_start_and_end():
     code = "[first, ..rest, last]"
     result = parse(code)
     expected = [{
         'type': 'expression_statement',
-            'expression': {
+        'expression': {
                 'type': 'list',
                 'elements': [
                     {'type': 'identifier', 'value': 'first', 'line': 1, 'column': 2},
-                    {'type': 'spread', 'value': 'rest', 'line': 1, 'column': 9},
+                    {'type': 'unary_operator', 'operator': '..', 'operand': {
+                        'value': 'rest', 'type': "identifier"}, 'line': 1, 'column': 9},
                     {'type': 'identifier', 'value': 'last', 'line': 1, 'column': 17}
                 ]
-            }
+        }
     }]
     assert strip_metadata(result) == strip_metadata(expected)
+
 
 def test_parser_dynamic_range():
     code = """
@@ -340,11 +349,9 @@ start..end
         {
             'type': 'expression_statement',
             'expression': {
-                'type': 'range',
-                'start': {'type': 'identifier', 'value': 'start'},
-                'end': {'type': 'identifier', 'value': 'end'}
-            }
-        },
+                'type': 'operator', 'operator': '..',
+                'left': {'type': 'identifier', 'value': 'start'},
+                'right': {'type': 'identifier', 'value': 'end'}}},
     ]
     assert strip_metadata(result) == strip_metadata(expected)
 
@@ -354,35 +361,35 @@ def test_parser_list_pattern_ast():
     ast = parse(code)
     expected_ast = [
         {
-            "type": "function_definition",
-            "name": "foo",
-            "definitions": [
-                {
-                    "parameters": [
-                        {
-                            "type": "list_pattern",
-                            "elements": [
-                                {"type": "wildcard"},
-                                {"type": "spread", "value": "r"}
-                            ]
-                        }
-                    ],
-                    "guard": None,
-                    "body": {
-                        "type": "list",
-                        "elements": [
-                            {"type": "number", "value": "99"},
-                            {"type": "spread", "value": "r"}
+            'type': 'function_definition', 'name': 'foo',
+            'definitions': [
+                {'parameters': [
+                    {
+                        'type': 'list_pattern',
+                        'elements':
+                        [
+                            {'type': 'wildcard'},
+                            {
+                                'type': 'unary_operator', 'operator': '..',
+                                'operand': {'type': 'identifier', 'value': 'r'}
+                            }
                         ]
-                    },
-                    "foreign": False,
-                }
-            ]
-        }
+                    }],
+                 'guard': None,
+                 'body': {
+                     'type': 'list',
+                     'elements': [
+                         {'type': 'number', 'value': '99'},
+                         {
+                             'type': 'unary_operator',
+                             'operator': '..',
+                             'operand': {'type': 'identifier', 'value': 'r'}}]},
+                 'foreign': False}]}
     ]
     assert strip_metadata(ast) == strip_metadata(expected_ast)
 
 # tests/test_parser.py
+
 
 def test_parser_grouped_expression():
     code = "fn foo() -> (a + b);"
@@ -467,19 +474,21 @@ def test_parser_grouped_statements():
 
     assert strip_metadata(ast) == strip_metadata(expected_ast)
 
+
 def test_parser_raw_string():
     code = r'r"[A-Z]+\n"'
     ast = parse(code)
     expected_ast = [{
         'type': 'expression_statement',
-            'expression': {
+        'expression': {
                 'type': 'raw_string',
                 'value': '[A-Z]+\\n',
                 'line': 1,
                 'column': 7
-            }
+        }
     }]
     assert strip_metadata(ast) == strip_metadata(expected_ast)
+
 
 def test_parser_unary():
     code = r'-1'
@@ -534,9 +543,11 @@ def test_parser_simple_delay():
             }
         }
     ]
-    assert strip_metadata( ast) == strip_metadata(  expected_ast )
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
 
 # 2. Test if the parser handles a delay expression with an identifier
+
+
 def test_parser_delay_with_identifier():
     code = "delay(expensive_computation)"
     ast = parse(code)
@@ -551,15 +562,19 @@ def test_parser_delay_with_identifier():
             }
         }
     ]
-    assert strip_metadata( ast) == strip_metadata(  expected_ast )
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
 
 # 3. Test if the parser throws an error for missing parentheses in delay
+
+
 def test_parser_missing_parentheses():
     code = "delay 42"
     with pytest.raises(Parser.SyntaxError, match="Expected '\(' after 'delay'"):
         parse(code)
 
 # 4. Test if the parser handles nested delay expressions
+
+
 def test_parser_nested_delay():
     code = "delay(delay(42))"
     ast = parse(code)
@@ -578,6 +593,8 @@ def test_parser_nested_delay():
     assert strip_metadata(ast) == strip_metadata(expected_ast)
 
 # 5. Test if the parser handles a delay expression within a function call
+
+
 def test_parser_delay_in_function_call():
     code = "fn compute() -> delay(expensive_computation())"
     ast = parse(code)
@@ -610,7 +627,8 @@ def test_parser_delay_in_function_call():
             'column': 4
         }
     ]
-    assert strip_metadata( ast) == strip_metadata(  expected_ast )
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
+
 
 def test_parser_named_function_with_literal():
     code = "fn fact(0) -> 1;"
@@ -636,7 +654,8 @@ def test_parser_named_function_with_literal():
             'column': 5
         }
     ]
-    assert strip_metadata( ast) == strip_metadata (expected_ast)
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
+
 
 def test_parser_anonymous_function():
     code = "fn (y) -> y + 1;"
@@ -669,88 +688,24 @@ def test_parser_anonymous_function():
             'column': 1
         }
     ]
-    assert strip_metadata (ast) == strip_metadata (expected_ast)
-    
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
+
 
 def test_parser_multiple_spread_operators():
     """
     Test parsing of a function definition with multiple spread operators in list patterns.
-    
+
     Function Definition:
         fn process([..a, ..b]) -> [..a, ..b]
-    
-    Expected AST Structure:
-    [
-        {
-            'type': 'function_definition',
-            'name': 'process',
-            'definitions': [
-                {
-                    'parameters': [
-                        {
-                            'type': 'list_pattern',
-                            'elements': [
-                                {'type': 'spread', 'value': 'a'},
-                                {'type': 'spread', 'value': 'b'}
-                            ],
-                            'line': 1,
-                            'column': 12
-                        }
-                    ],
-                    'guard': None,
-                    'body': {
-                        'type': 'list',
-                        'elements': [
-                            {'type': 'spread', 'value': 'a'},
-                            {'type': 'spread', 'value': 'b'}
-                        ],
-                        'line': 1,
-                        'column': 25
-                    },
-                    'foreign': False
-                }
-            ],
-            'line': 1,
-            'column': 1
-        }
-    ]
+
+
     """
     code = "fn process([..a, ..b]) -> [..a, ..b]"
     ast = parse(code)
-    
+
     expected_ast = [
-        {
-            'type': 'function_definition',
-            'name': 'process',
-            'definitions': [
-                {
-                    'parameters': [
-                        {
-                            'type': 'list_pattern',
-                            'elements': [
-                                {'type': 'spread', 'value': 'a'},
-                                {'type': 'spread', 'value': 'b'}
-                            ],
-                            'line': 1,
-                            'column': 12
-                        }
-                    ],
-                    'guard': None,
-                    'body': {
-                        'type': 'list',
-                        'elements': [
-                            {'type': 'spread', 'value': 'a'},
-                            {'type': 'spread', 'value': 'b'}
-                        ],
-                        'line': 1,
-                        'column': 25
-                    },
-                    'foreign': False
-                }
-            ],
-            'line': 1,
-            'column': 1
-        }
-    ]
-    
-    assert strip_metadata (ast) == strip_metadata (expected_ast), f"Expected AST does not match actual AST.\nExpected: {expected_ast}\nActual: {ast}"
+        {'type': 'function_definition', 'name': 'process', 'definitions': [{'parameters': [{'type': 'list_pattern', 'elements': [{'type': 'unary_operator', 'operator': '..', 'operand': {'type': 'identifier', 'value': 'a', 'line': 1, 'column': 15}, 'line': 1, 'column': 13}, {'type': 'unary_operator', 'operator': '..', 'operand': {'type': 'identifier', 'value': 'b', 'line': 1, 'column': 20}, 'line': 1,
+                                                                                                                                                                                                                                                                                   'column': 18}], 'line': 1, 'column': 12}], 'guard': None, 'body': {'type': 'list', 'elements': [{'type': 'unary_operator', 'operator': '..', 'operand': {'type': 'identifier', 'value': 'a', 'line': 1, 'column': 30}, 'line': 1, 'column': 28}, {'type': 'unary_operator', 'operator': '..', 'operand': {'type': 'identifier', 'value': 'b', 'line': 1, 'column': 35}, 'line': 1, 'column': 33}]}, 'foreign': False}]}]
+
+    assert strip_metadata(ast) == strip_metadata(
+        expected_ast), f"Expected AST does not match actual AST.\nExpected: {expected_ast}\nActual: {ast}"
