@@ -1,3 +1,74 @@
-__pycache__
-.venv
+
+
+
+# MacOS
+.DS_Store
+Thumbs.db
+
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+.env/
+.env.bak/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Distribution files
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Test coverage and reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Pytest cache
+.cache/
 .pytest_cache
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# Profiling data
+.prof/
+
+# Local config files
+*.local
+*.env
+
+# Docker files
+docker-compose.override.yml
+
+# Package manager lock files (if not intentionally tracked)
+Pipfile.lock
+poetry.lock

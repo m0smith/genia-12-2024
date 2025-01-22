@@ -10,7 +10,7 @@ class Parser:
         self.tokens = deque(tokens)
         print(f"TOKENS {list(self.tokens)}")
         self.PRECEDENCE = {
-            'DOT_DOT': 5,
+            
             'OR': 10,
             'AND': 20,
             'NOT': 30,
@@ -46,6 +46,22 @@ class Parser:
 
         if token_type == 'KEYWORD' and value == 'fn':
             return self.function_definition()
+        elif token_type in {'IDENTIFIER', 'PUNCTUATION'}:
+            # Attempt to parse a pattern
+            tokens_copy = deque(self.tokens)
+            try:
+                pattern = self.parse_pattern()
+                # After pattern, expect '='
+                if self.tokens and self.tokens[0][0] == 'OPERATOR' and self.tokens[0][1] == '=':
+                    # It's an assignment
+                    return self.assignment(pattern=pattern)
+                else:
+                    # Not an assignment, rewind tokens and parse as expression statement
+                    self.tokens = tokens_copy
+                    return self.expression_statement()
+            except self.SyntaxError:
+                # Not a pattern, parse as expression statement
+                return self.expression_statement()
         elif token_type == 'IDENTIFIER':
             # Lookahead to check if it's an assignment
             if len(self.tokens) > 1 and self.tokens[1][0] == 'OPERATOR' and self.tokens[1][1] == '=':
@@ -288,18 +304,18 @@ class Parser:
         else:
             raise self.SyntaxError(f"Unsupported literal type {token_type} in pattern at line {line}, column {column}")
 
-    def assignment(self):
+    def assignment(self, pattern=None):
         if not self.tokens:
             raise self.SyntaxError("Unexpected end of input in assignment")
+        if not pattern:
+            token_type, pattern, line, column = self.tokens.popleft()
 
-        token_type, var_name, line, column = self.tokens.popleft()
+            if token_type != 'IDENTIFIER':
+                raise self.SyntaxError(f"Expected identifier in assignment at line {line}, column {column}")
 
-        if token_type != 'IDENTIFIER':
-            raise self.SyntaxError(f"Expected identifier in assignment at line {line}, column {column}")
-
-        # Expect '=' operator
-        if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after identifier in assignment")
+            # Expect '=' operator
+            if not self.tokens:
+                raise self.SyntaxError("Unexpected end of input after identifier in assignment")
 
         token_type, op, line, column = self.tokens.popleft()
 
@@ -311,10 +327,10 @@ class Parser:
 
         return {
             'type': 'assignment',
-            'identifier': var_name,
+            'pattern': pattern,
             'value': value,
-            'line': line,
-            'column': column
+            'line': pattern.get('line', line) if not isinstance(pattern, str) else line,
+            'column': pattern.get('column', column) if not isinstance(pattern, str) else column
         }
 
     def expression_statement(self):
@@ -337,10 +353,8 @@ class Parser:
         while self.tokens:
             next_token_type, next_value, next_line, next_column = self.tokens[0]
             if next_token_type in {'OPERATOR', 'COMPARATOR'}:
-                if next_value == '..':
-                    op_precedence = self.PRECEDENCE['DOT_DOT']
-                else:
-                    op_precedence = self.PRECEDENCE.get(self.get_precedence_name(next_token_type, next_value), -1)
+                
+                op_precedence = self.PRECEDENCE.get(self.get_precedence_name(next_token_type, next_value), -1)
                 if op_precedence < precedence:
                     break
                 self.tokens.popleft()  # Consume operator
@@ -366,6 +380,8 @@ class Parser:
                 return 'COMPARE'
             elif value == '=':
                 return 'EQUAL'
+            elif value == '..':
+                return 'RANGE'
             else:
                 return 'UNKNOWN'
         elif token_type == 'COMPARATOR':
@@ -375,8 +391,7 @@ class Parser:
                 return 'COMPARE'
             else:
                 return 'UNKNOWN'
-        elif token_type == 'DOT_DOT':
-            return 'RANGE'
+
         else:
             return 'UNKNOWN'
 
@@ -387,7 +402,6 @@ class Parser:
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
         elif token_type == 'OPERATOR' and value in {'-', '+', '..'}:
-            # self.tokens.popleft()  # Consume unary operator
             operand = self.expression()
             return {
                     'type': 'unary_operator', 
@@ -436,12 +450,12 @@ class Parser:
                 #      # Parse the expression after '..'
                 #     spread_expr = self.expression()
                 #     elements.append({'type': 'spread', 'value': spread_expr})
-                elif token_type == 'NUMBER':
-                    self.tokens.popleft()  # Consume number
-                    elements.append({'type': 'number', 'value': value})
-                elif token_type in {'STRING', 'RAW_STRING'}:
-                    self.tokens.popleft()  # Consume string
-                    elements.append({'type': token_type.lower(), 'value': value})
+                # elif token_type == 'NUMBER':
+                #     self.tokens.popleft()  # Consume number
+                #     elements.append({'type': 'number', 'value': value})
+                # elif token_type in {'STRING', 'RAW_STRING'}:
+                #     self.tokens.popleft()  # Consume string
+                #     elements.append({'type': token_type.lower(), 'value': value})
                 else:
                     # Handle other expression types as needed
                     expr = self.expression()
@@ -512,6 +526,7 @@ class Parser:
         """
         if token_type == 'OPERATOR' or token_type == 'COMPARATOR':
             right = self.expression(precedence)
+            
             return {
                 'type': token_type.lower(),
                 'operator': value,

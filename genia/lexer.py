@@ -16,7 +16,7 @@ class Lexer:
         ('NEWLINE', r'\n'),                                     # Newlines
         ('ARROW', r'->'),                                       # Arrow operator
         # ('DOT_DOT', r'\.\.'),                                   # Double dot
-        ('COMPARATOR', r'[<>!]=?'),                             # <, >, <=, >=, !=
+        ('COMPARATOR', r'[<>!]=?|=='),                             # <, >, <=, >=, !=
         ('OPERATOR', r'\.\.|[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
         ('PUNCTUATION', r'[()\[\]{},;|]'),                       # Punctuation
         ('NUMBER', r'\d+'),                                     # Integer numbers

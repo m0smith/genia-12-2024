@@ -327,6 +327,20 @@ def test_list_with_start_and_end():
     }]
     assert strip_metadata(result) == strip_metadata(expected)
 
+def test_range_in_list():
+    code = "[1..3]"
+    result = parse(code)
+    expected = [
+        {
+            'type': 'expression_statement', 
+            'expression': {
+                'type': 'list', 
+                'elements': [
+                    
+                    {'type': 'operator', 'operator': '..', 
+                     'right':{'type': 'number', 'value': '3'}, 
+                     'left': {'type': 'number', 'value': '1'}}]}}]
+    assert strip_metadata(result) == strip_metadata(expected)
 
 def test_parser_dynamic_range():
     code = """
@@ -338,12 +352,12 @@ start..end
     expected = [
         {
             'type': 'assignment',
-            'identifier': 'start',
+            'pattern': {'type':'identifier', 'value': 'start'},
             'value': {'type': 'number', 'value': '10'},
         },
         {
             'type': 'assignment',
-            'identifier': 'end',
+            'pattern': {'type':'identifier', 'value': 'end'},
             'value': {'type': 'number', 'value': '15'},
         },
         {
@@ -441,14 +455,14 @@ def test_parser_grouped_statements():
                         'statements': [
                             {
                                 'type': 'assignment',
-                                'identifier': 'a',
+                                'pattern': 'a',
                                 'value': {'type': 'number', 'value': '1', 'line': 1, 'column': 14},
                                 'line': 1,
                                 'column': 4
                             },
                             {
                                 'type': 'assignment',
-                                'identifier': 'b',
+                                'pattern': 'b',
                                 'value': {'type': 'number', 'value': '2', 'line': 1, 'column': 21},
                                 'line': 1,
                                 'column': 14
