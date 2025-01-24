@@ -1,5 +1,5 @@
 import pytest
-from genia.delay import Delay, Interpreter
+from genia.interpreter import Delay, Interpreter
 
 @pytest.fixture
 def interpreter():

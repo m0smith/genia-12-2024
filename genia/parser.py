@@ -8,7 +8,7 @@ class Parser:
 
     def __init__(self, tokens):
         self.tokens = deque(tokens)
-        print(f"TOKENS {list(self.tokens)}")
+        # print(f"TOKENS {list(self.tokens)}")
         self.PRECEDENCE = {
             
             'OR': 10,
@@ -129,7 +129,7 @@ class Parser:
             raise self.SyntaxError(f"Expected '->' after function guard at line {line}, column {column}")
 
         # Parse body
-        body = self.expression()
+        body = self.expression(is_tail=True)
 
         definitions = [{
             'parameters': parameters,
@@ -178,7 +178,7 @@ class Parser:
                     raise self.SyntaxError(f"Expected '->' after alternative parameters at line {line}, column {column}")
 
                 # Parse body
-                body = self.expression()
+                body = self.expression(is_tail=True)
 
                 definitions.append({
                     'parameters': parameters,
@@ -304,7 +304,7 @@ class Parser:
         else:
             raise self.SyntaxError(f"Unsupported literal type {token_type} in pattern at line {line}, column {column}")
 
-    def assignment(self, pattern=None):
+    def assignment(self, pattern=None, is_tail=False):
         if not self.tokens:
             raise self.SyntaxError("Unexpected end of input in assignment")
         if not pattern:
@@ -323,7 +323,7 @@ class Parser:
             raise self.SyntaxError(f"Expected '=' in assignment at line {line}, column {column}")
 
         # Parse the expression on the right-hand side
-        value = self.expression()
+        value = self.expression(is_tail=is_tail)
 
         return {
             'type': 'assignment',
@@ -340,7 +340,7 @@ class Parser:
             'expression': expr
         }
 
-    def expression(self, precedence=0):
+    def expression(self, precedence=0, is_tail=False):
         """
         Pratt parser implementation for expressions.
         """
@@ -348,7 +348,7 @@ class Parser:
             raise self.SyntaxError("Unexpected end of input in expression")
 
         token_type, value, line, column = self.tokens.popleft()
-        left = self.nud(token_type, value, line, column)
+        left = self.nud(token_type, value, line, column, is_tail)
 
         while self.tokens:
             next_token_type, next_value, next_line, next_column = self.tokens[0]
@@ -364,9 +364,19 @@ class Parser:
                 
             if op_precedence < precedence:
                 break
-
+        if is_tail:
+            self.annotate_tail_calls(left)
         return left
+    
+    def annotate_tail_calls(self, node):
+        """
+        Annotate the node as a tail call if it is a function call.
+        Does not traverse child nodes.
+        """
+        if isinstance(node, dict) and node.get('type') == 'function_call':
+            node['is_tail_call'] = True
 
+                        
     def get_precedence_name(self, token_type, value):
         """
         Maps token to precedence category.
@@ -395,7 +405,7 @@ class Parser:
         else:
             return 'UNKNOWN'
 
-    def nud(self, token_type, value, line, column):
+    def nud(self, token_type, value, line, column, is_tail=False):
         """
         Null denotation for tokens that start expressions.
         """
@@ -470,8 +480,11 @@ class Parser:
                     self.tokens.popleft()  # Consume ')'
                     break
                 else:
+                    # Determine if this statement is in a tail position
+                    # Only the last statement in the group is in tail position
+                    is_last = False
                     # Parse a statement within the group
-                    statement = self.group_statement()
+                    statement = self.group_statement(is_tail=is_tail and is_last)
                     statements.append(statement)
                     # After a statement, expect ';' or ')'
                     if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ';':
@@ -497,7 +510,7 @@ class Parser:
         else:
             raise self.SyntaxError(f"Unexpected token {token_type} {value} at line {line}, column {column}")
 
-    def group_statement(self):
+    def group_statement(self, is_tail=False):
         """
         Parses a statement within a grouped context, such as inside ().
         Does not wrap expressions in 'expression_statement'.
@@ -512,12 +525,12 @@ class Parser:
         elif token_type == 'IDENTIFIER':
             # Lookahead to check if it's an assignment
             if len(self.tokens) > 1 and self.tokens[1][0] == 'OPERATOR' and self.tokens[1][1] == '=':
-                return self.assignment()
+                return self.assignment(is_tail=is_tail)
             else:
-                expr = self.expression()
+                expr = self.expression(is_tail=is_tail)
                 return expr
         else:
-            expr = self.expression()
+            expr = self.expression(is_tail=is_tail)
             return expr
 
     def led(self, token_type, value, left, precedence, line, column):

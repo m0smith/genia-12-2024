@@ -9,11 +9,14 @@ import re
 import copy
 import threading
 
-from genia.callable_function import CallableFunction
-from genia.delay import Delay
+# from genia.callable_function import CallableFunction
+# from genia.delay import Delay
+from genia import trace
 from genia.lazy_seq import lazyseq
 from genia.lexer import Lexer
 from genia.parser import Parser
+from genia.seq import delay_seq, Sequence, count_seq, nth_seq
+from genia.hosted.os import files_in_paths
 
 def bind_list_pattern(pattern, arg, local_env):
     elements = pattern['elements']
@@ -25,6 +28,8 @@ def bind_list_pattern(pattern, arg, local_env):
                 local_env[element['operand']['value']] = arg[i:]
             elif isinstance(arg, LazySeq):
                 local_env[element['operand']['value']] = list(islice(arg, i, None))
+            elif isinstance(arg, Sequence):
+                local_env[element['operand']['value']] = arg.rest()
             else:
                 raise ValueError(f"Unsupported type for spread binding: {type(arg).__name__}")
         else:
@@ -38,7 +43,21 @@ def bind_list_pattern(pattern, arg, local_env):
                     raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
             elif isinstance(arg, LazySeq):
                 try:
-                    local_env[element['value']] = next(islice(arg, i, i + 1))
+                    
+                    if element['type'] == 'wildcard':
+                        pass
+                    else:
+                        v = next(islice(arg, i, i + 1))
+                        local_env[element['value']] = v
+                except StopIteration:
+                    raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
+            elif isinstance(arg, Sequence):
+                try:
+                    
+                    if element['type'] == 'wildcard':
+                        pass
+                    else:
+                        local_env[element['value']] = nth_seq(i, arg)
                 except StopIteration:
                     raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
             else:
@@ -76,7 +95,6 @@ class CallableFunction:
         if definition['guard']:
             # Bind parameters and push a new environment
             bound_env = self.bind_parameters(definition, args)
-            print(f"BOUND {bound_env} {args}")
             combined_env = {**self.closure_context, **bound_env}
             interpreter.push_env(combined_env)
             try:
@@ -109,12 +127,14 @@ class CallableFunction:
                 raise ValueError(f"Unsupported parameter type: {param['type']}")
 
     def match_list_pattern(self, pattern, arg):
-        if not isinstance(arg, (list, LazySeq)):
+        if not isinstance(arg, (list, LazySeq, Sequence)):
             return False
         if isinstance(arg, list):
             return self.match_list_pattern_list(pattern, arg)
         elif isinstance(arg, LazySeq):
             return self.match_list_pattern_lazy_seq(pattern, arg)
+        elif isinstance(arg, Sequence):
+            return self.match_list_pattern_sequence(pattern, arg)
         else:
             raise ValueError(f"Unsupported type: {type(arg).__name__}")
 
@@ -131,6 +151,17 @@ class CallableFunction:
         elements = pattern['elements']
         try:
             len_it = len(list(islice(lazy_seq, len(elements) + 1)))
+        except TypeError:
+            len_it = 0  # If not iterable
+        if len(elements) >= 2 and elements[-1]['type'] == 'unary_operator' and elements[-1]['operator'] == "..":
+            # Match `[first, ..rest]`
+            return len_it >= len(elements) - 1
+        return len_it == len(elements)  # Exact length match
+    
+    def match_list_pattern_sequence(self, pattern, sequence):
+        elements = pattern['elements']
+        try:
+            len_it = count_seq(len(elements) + 1, sequence)
         except TypeError:
             len_it = 0  # If not iterable
         if len(elements) >= 2 and elements[-1]['type'] == 'unary_operator' and elements[-1]['operator'] == "..":
@@ -211,7 +242,7 @@ class CallableFunction:
             raise ValueError("Invalid AST node: must contain 'parameters' and 'body'.")
         self.add_definition(ast_node)
 
-
+   
 class Delay:
     def __init__(self, expression):
         self.expression = expression
@@ -242,42 +273,10 @@ class Delay:
                         raise e
         return self._value
 
-
-def make_persistent(fn):
-    def i():
-        rtnval = fn()
-        if isinstance(rtnval, (list, dict, set)):
-            rtnval = copy.deepcopy(rtnval)
-        return rtnval
-    return i
-
-
-class LazySeq:
-    def __init__(self, fn=None, seq=None):
-        if isinstance(fn, list):
-            seq = fn
-            fn = None
-        if fn:
-            self.delay = Delay(make_persistent(fn))
-        elif seq is not None:
-            self.delay = Delay(make_persistent(lambda: seq))
-        else:
-            self.delay = Delay(lambda: [])
-
-    def __iter__(self):
-        rtnval = self.delay.value()
-        return iter(rtnval)
-
-
-def lazyseq(fn=None, seq=None):
-    return LazySeq(fn, seq)
-
-
 class Interpreter:
     def __init__(self):
         self.env_stack = [dict()]  # Stack of environments for variable scopes
         self.functions = {}         # Stores function definitions
-        self.trace = False
         self.call_stack = deque()   # For TCO
 
         self.stdin = None
@@ -301,6 +300,8 @@ class Interpreter:
 
     def add_hosted_functions(self):
         # Register foreign functions with varying arities
+        self.register_foreign_function("find_files", files_in_paths, parameters=["path"])
+        self.register_foreign_function("delayseq", delay_seq, parameters=["head", "tail"])
         self.register_foreign_function("lazyseq", lazyseq, parameters=["seq"])
         for i in range(1, 8):
             params = [f"msg{j}" for j in range(1, i + 1)]
@@ -331,8 +332,8 @@ class Interpreter:
         })
 
     def do_trace(self):
-        self.trace = True
-        return self.trace
+        trace = True
+        return trace
 
     def write_to_stdout(self, *args):
         """
@@ -471,7 +472,7 @@ class Interpreter:
         method = getattr(self, method_name, None)
         if not method:
             raise RuntimeError(f"Unsupported node type: {node['type']} at line {node.get('line')}, column {node.get('column')}")
-        if self.trace:
+        if trace:
             self.write_to_stderr(f"TRACE: Applying {method_name} to {node}")
         return method(node)
     def eval_number_literal(self, node):
@@ -531,7 +532,7 @@ class Interpreter:
             bind_list_pattern(pattern, value, self.environment)
         else:
             self.environment[pattern['value']] = value
-        if self.trace:
+        if trace:
             self.write_to_stderr(f"TRACE: {pattern} = {value}")
         return value
     
@@ -595,7 +596,9 @@ class Interpreter:
                 raise RuntimeError(f"Left operand of '~' must be a string at line {node.get('line')}, column {node.get('column')}")
             if not isinstance(right, str):
                 raise RuntimeError(f"Right operand of '~' must be a string (regex pattern) at line {node.get('line')}, column {node.get('column')}")
-            return bool(re.match(right, left))
+            
+            result = re.match(right, left)
+            return bool(result)
         elif op == '=':
             # Assignment is handled separately; '=' should not appear here
             raise RuntimeError("Unexpected '=' operator in eval_operator")
@@ -631,7 +634,7 @@ class Interpreter:
         else:
             raise RuntimeError(f"Unsupported comparison operator: {operator} at line {node.get('line')}, column {node.get('column')}")
 
-        if self.trace:
+        if trace:
             self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
         return rtnval
 
@@ -658,7 +661,6 @@ class Interpreter:
             if element['type'] == 'unary_operator' and element['operator'] == '..':
                 rtnval += el
             else:
-                print(f"ELEMENT {element} {el}")
                 rtnval.append(el)
         return rtnval
 
@@ -680,7 +682,7 @@ class Interpreter:
         for definition in node['definitions']:
             func.add_definition(definition)
 
-        if self.trace:
+        if trace:
             self.write_to_stderr(f"TRACE: Function '{name}' defined with definitions: {func.definitions}")
         return func
 
@@ -696,8 +698,12 @@ class Interpreter:
         else:
             raise RuntimeError(f"Undefined function: '{name}' at line {node.get('line')}, column {node.get('column')}")
         args = [self.evaluate(arg) for arg in node['arguments']]
-
-        return self.call_function(func, args, node_context=(node.get('line'), node.get('column')))
+        if node.get('is_tail_call', False):
+            # Return a TailCall instance to enable TCO
+            return TailCall(func=func, args=args, node_context=(node.get('line'), node.get('column')))
+        else:
+            # Normal function call
+            return self.call_function(func, args, node_context=(node.get('line'), node.get('column')))
 
     def call_function(self, func, args, node_context):
         """
@@ -785,7 +791,7 @@ class GENIAInterpreter:
             tokens = list(self.lexer.tokenize())
         except Lexer.SyntaxError as e:
             raise RuntimeError(str(e))
-        print(tokens)
+        # print(tokens)
         self.parser = Parser(tokens)
         try:
             ast = self.parser.parse()

@@ -1,2 +1,9 @@
+
+fn inc(i) -> i + 1
+fn iterate(f, v) -> delayseq(v, delay(iterate(f, f(v))))
+fn numbers () -> iterate(inc, 1)
 trace()
-s = lazyseq([1,2,3])
+[a,b,c] = numbers()
+print(a)  // prints 1
+print(b)  // prints 2
+print(c)  // prints 3

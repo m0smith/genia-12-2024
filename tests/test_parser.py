@@ -723,3 +723,44 @@ def test_parser_multiple_spread_operators():
 
     assert strip_metadata(ast) == strip_metadata(
         expected_ast), f"Expected AST does not match actual AST.\nExpected: {expected_ast}\nActual: {ast}"
+def test_tail_call():
+    code = "fn fact_tail(n) when n > 1 -> fact_tail(n - 1)"
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected_ast = [
+        {
+            "type": "function_definition",
+            "name": "fact_tail",
+            "definitions": [
+                {
+                    "parameters": [{"type": "identifier", "value": "n"}],
+                    "guard": {
+                        "type": "comparator",
+                        "operator": ">",
+                        "left": {"type": "identifier", "value": "n"},
+                        "right": {"type": "number", "value": "1"}
+                    },
+                    "body": {
+                        "type": "function_call",
+                        "name": "fact_tail",
+                        "is_tail_call": True,
+                        "arguments": [
+                            {
+                                "type": "operator",
+                                "operator": "-",
+                                "left": {"type": "identifier", "value": "n"},
+                                "right": {"type": "number", "value": "1"}
+                            }
+                        ]
+                    },
+                    "foreign": False
+                }
+            ]
+        }
+    ]
+
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
