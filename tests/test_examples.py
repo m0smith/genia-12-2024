@@ -36,6 +36,14 @@ def test_duplicate_with_reduce():
     """
     interp = GENIAInterpreter()
     assert interp.run(code) == [5,5,5]
+
+def test_string_pattern_matching():
+    code = """
+    fn switch("X") -> "O" | (_) -> "X"
+    switch("X")
+    """
+    interp = GENIAInterpreter()
+    assert interp.run(code) == "O"
     
 def test_simple_assigment():
     code = """
