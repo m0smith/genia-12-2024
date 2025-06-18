@@ -378,12 +378,12 @@ class Parser:
         if token_type == 'NUMBER':
             return {'type': 'number_literal', 'value': int(value), 'line': line, 'column': column}
         elif token_type == 'STRING':
-            # Remove surrounding quotes and handle escape sequences if necessary
-            string_value = bytes(value[1:-1], "utf-8").decode("unicode_escape")
+            # Lexer already strips quotes and decodes escapes
+            string_value = value
             return {'type': 'string_literal', 'value': string_value, 'line': line, 'column': column}
         elif token_type == 'RAW_STRING':
-            # Remove surrounding quotes without interpreting escape sequences
-            raw_string_value = value[2:-1]  # Assuming raw strings start with r" and end with "
+            # Lexer already strips the leading r and surrounding quotes
+            raw_string_value = value
             return {'type': 'string_literal', 'value': raw_string_value, 'line': line, 'column': column}
         else:
             raise self.SyntaxError(f"Unsupported literal type {token_type} in pattern at line {line}, column {column}")
