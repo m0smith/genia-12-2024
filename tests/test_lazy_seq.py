@@ -15,6 +15,8 @@ def test_lazy_evaluation():
         return [1, 2, 3]
     seq = LazySeq(fn=compute)
     assert not calls
+    list(seq)
+    assert len(calls) == 1
 
 def test_sequence_generation():
     seq = LazySeq(fn=lambda: [1, 2, 3])

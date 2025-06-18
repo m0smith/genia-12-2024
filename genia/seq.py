@@ -57,7 +57,7 @@ class DelaySeq(Sequence):
         """
         Initialize DelaySeq with a value and a Delay.
         :param value: The first element of the sequence.
-        :param delay: An object with a value() method that returns a Sequence.
+        :param delayed: An object with a value() method that returns a Sequence.
         """
         self.empty = value is None and delayed is None
         self._value = value
