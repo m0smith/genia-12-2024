@@ -128,8 +128,9 @@ fn rem(x, y) -> foreign "math.remainder";
 
 - The string `"math.remainder"` is resolved into a Python callable using dynamic import:
   ```python
+  import importlib
   module_name, func_name = "math.remainder".rsplit('.', 1)
-  module = __import__(module_name)
+  module = importlib.import_module(module_name)
   function = getattr(module, func_name)
   ```
 
