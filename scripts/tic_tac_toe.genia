@@ -1,0 +1,40 @@
+fn create_board() -> foreign "genia.hosted.tictactoe.create_board"
+fn print_board(b) -> foreign "genia.hosted.tictactoe.print_board"
+fn set_board(b, i, v) -> foreign "genia.hosted.tictactoe.set_board"
+fn check_win(b, p) -> foreign "genia.hosted.tictactoe.check_win"
+fn input(prompt) -> foreign "builtins.input"
+fn int(s) -> foreign "builtins.int"
+
+TRUE  = 1 == 1
+FALSE = 1 == 2
+
+fn equal?(x) -> fn(y) -> x == y
+    | (x, y) -> x == y
+
+fn every?(pred) -> fn(list) -> every?(pred, list)
+fn every?(_, []) -> TRUE
+fn every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
+fn every?(pred, [head, ..tail]) -> FALSE
+
+fn board_full(board) -> every?(fn(x) -> x != " ", board)
+
+board = create_board()
+
+fn switch("X") -> "O" | (_) -> "X"
+
+fn game(p) when check_win(board, p) -> (
+    print_board(board);
+    print("Player " + p + " wins!")
+)
+fn game(p) when board_full(board) -> (
+    print_board(board);
+    print("It's a draw!")
+)
+fn game(p) -> (
+    print_board(board);
+    idx = int(input("Player " + p + " (0-8): "));
+    ok = set_board(board, idx, p);
+    game(switch(p))
+)
+
+game("X")

@@ -11,7 +11,7 @@ import threading
 
 # from genia.callable_function import CallableFunction
 # from genia.delay import Delay
-from genia import trace
+import genia
 from genia.lazy_seq import lazyseq
 from genia.lexer import Lexer
 from genia.parser import Parser
@@ -111,6 +111,8 @@ class CallableFunction:
         match param.get('type'):
             case 'list_pattern':
                 return self.match_list_pattern(param, arg)
+            case 'constructor_pattern':
+                return self.match_constructor_pattern(param, arg)
             case 'identifier':
                 return True  # Identifiers always match
             case 'string':
@@ -169,12 +171,52 @@ class CallableFunction:
             return len_it >= len(elements) - 1
         return len_it == len(elements)  # Exact length match
 
+    def match_constructor_pattern(self, pattern, arg):
+        if not isinstance(arg, dict):
+            return False
+        if arg.get('ctor') != pattern['name']:
+            return False
+        values = arg.get('values', [])
+        if len(values) != len(pattern['parameters']):
+            return False
+        for subp, val in zip(pattern['parameters'], values):
+            if not self.match_parameter(subp, val):
+                return False
+        return True
+
+    def bind_constructor_pattern(self, pattern, arg, local_env):
+        if not isinstance(arg, dict) or arg.get('ctor') != pattern['name']:
+            raise RuntimeError(f"Constructor mismatch: expected {pattern['name']}")
+        values = arg.get('values', [])
+        if len(values) != len(pattern['parameters']):
+            raise RuntimeError(f"{pattern['name']} expects {len(pattern['parameters'])} arguments")
+        for subp, val in zip(pattern['parameters'], values):
+            match subp.get('type'):
+                case 'identifier':
+                    local_env[subp['value']] = val
+                case 'wildcard':
+                    pass
+                case 'list_pattern':
+                    bind_list_pattern(subp, val, local_env)
+                case 'constructor_pattern':
+                    self.bind_constructor_pattern(subp, val, local_env)
+                case 'string_literal':
+                    if subp['value'] != val:
+                        raise RuntimeError("Pattern mismatch")
+                case 'number_literal':
+                    if int(subp['value']) != val:
+                        raise RuntimeError("Pattern mismatch")
+                case _:
+                    pass
+
     def bind_parameters(self, definition, args):
         local_env = {}
         for param, arg in zip(definition['parameters'], args):
             match param.get('type'):
                 case 'list_pattern':
                     bind_list_pattern(param, arg, local_env)
+                case 'constructor_pattern':
+                    self.bind_constructor_pattern(param, arg, local_env)
                 case 'identifier':
                     local_env[param['value']] = arg
                 case 'wildcard':
@@ -278,6 +320,7 @@ class Interpreter:
         self.env_stack = [dict()]  # Stack of environments for variable scopes
         self.functions = {}         # Stores function definitions
         self.call_stack = deque()   # For TCO
+        self.data_types = {}
 
         self.stdin = None
         self.stdout = None
@@ -297,6 +340,13 @@ class Interpreter:
         if len(self.env_stack) <= 1:
             raise RuntimeError("Cannot pop the global environment.")
         self.env_stack.pop()
+
+    def evaluate_in_env(self, expr, env):
+        self.push_env(env.copy())
+        try:
+            return self.evaluate(expr)
+        finally:
+            self.pop_env()
 
     def add_hosted_functions(self):
         # Register foreign functions with varying arities
@@ -332,8 +382,8 @@ class Interpreter:
         })
 
     def do_trace(self):
-        trace = True
-        return trace
+        genia.trace = True
+        return genia.trace
 
     def write_to_stdout(self, *args):
         """
@@ -472,7 +522,7 @@ class Interpreter:
         method = getattr(self, method_name, None)
         if not method:
             raise RuntimeError(f"Unsupported node type: {node['type']} at line {node.get('line')}, column {node.get('column')}")
-        if trace:
+        if genia.trace:
             self.write_to_stderr(f"TRACE: Applying {method_name} to {node}")
         return method(node)
     def eval_number_literal(self, node):
@@ -532,9 +582,30 @@ class Interpreter:
             bind_list_pattern(pattern, value, self.environment)
         else:
             self.environment[pattern['value']] = value
-        if trace:
+        if genia.trace:
             self.write_to_stderr(f"TRACE: {pattern} = {value}")
         return value
+
+    def eval_data_definition(self, node):
+        type_name = node['name']
+        constructors = {}
+
+        for ctor in node['constructors']:
+            ctor_name = ctor['name']
+            param_count = len(ctor['parameters'])
+
+            def make_ctor(n, c):
+                def _ctor(*args):
+                    if len(args) != c:
+                        raise RuntimeError(f"{n} expects {c} arguments")
+                    return {'type': type_name, 'ctor': n, 'values': list(args)}
+                return _ctor
+
+            constructors[ctor_name] = make_ctor(ctor_name, param_count)
+            self.environment[ctor_name] = constructors[ctor_name]
+
+        self.data_types[type_name] = constructors
+        return None
     
     def eval_unary_operator(self, node):
         """
@@ -634,7 +705,7 @@ class Interpreter:
         else:
             raise RuntimeError(f"Unsupported comparison operator: {operator} at line {node.get('line')}, column {node.get('column')}")
 
-        if trace:
+        if genia.trace:
             self.write_to_stderr(f"TRACE: {left} {operator} {right} -> {rtnval}")
         return rtnval
 
@@ -682,7 +753,7 @@ class Interpreter:
         for definition in node['definitions']:
             func.add_definition(definition)
 
-        if trace:
+        if genia.trace:
             self.write_to_stderr(f"TRACE: Function '{name}' defined with definitions: {func.definitions}")
         return func
 
@@ -735,10 +806,9 @@ class Interpreter:
         """
         expression = node['expression']
         if isinstance(expression, dict):
-            # The expression is an AST node
-            return Delay(lambda: self.evaluate(expression))
+            captured_env = self.environment.copy()
+            return Delay(lambda: self.evaluate_in_env(expression, captured_env))
         else:
-            # The expression is a direct value or callable
             return Delay(expression)
 
     def eval_grouped_statements(self, node):
