@@ -50,4 +50,4 @@ def test_local_assigment():
     f()
     """
     interp = GENIAInterpreter()
-    assert interp.run(code) == 1
+    assert interp.run(code) == 2

@@ -391,20 +391,29 @@ class Parser:
     def assignment(self, pattern=None, is_tail=False):
         if not self.tokens:
             raise self.SyntaxError("Unexpected end of input in assignment")
-        if not pattern:
-            token_type, pattern, line, column = self.tokens.popleft()
+        if pattern is None:
+            token_type, name, line, column = self.tokens.popleft()
 
             if token_type != 'IDENTIFIER':
-                raise self.SyntaxError(f"Expected identifier in assignment at line {line}, column {column}")
+                raise self.SyntaxError(
+                    f"Expected identifier in assignment at line {line}, column {column}")
 
-            # Expect '=' operator
+            pattern = {
+                'type': 'identifier',
+                'value': name,
+                'line': line,
+                'column': column,
+            }
+
             if not self.tokens:
-                raise self.SyntaxError("Unexpected end of input after identifier in assignment")
+                raise self.SyntaxError(
+                    "Unexpected end of input after identifier in assignment")
 
         token_type, op, line, column = self.tokens.popleft()
 
         if token_type != 'OPERATOR' or op != '=':
-            raise self.SyntaxError(f"Expected '=' in assignment at line {line}, column {column}")
+            raise self.SyntaxError(
+                f"Expected '=' in assignment at line {line}, column {column}")
 
         # Parse the expression on the right-hand side
         value = self.expression(is_tail=is_tail)
@@ -413,8 +422,8 @@ class Parser:
             'type': 'assignment',
             'pattern': pattern,
             'value': value,
-            'line': pattern.get('line', line) if not isinstance(pattern, str) else line,
-            'column': pattern.get('column', column) if not isinstance(pattern, str) else column
+            'line': pattern['line'],
+            'column': pattern['column'],
         }
 
     def expression_statement(self):
