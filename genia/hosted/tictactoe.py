@@ -2,6 +2,7 @@ def create_board():
     return [' '] * 9
 
 def print_board(board):
+    print()
     for i in range(0, 9, 3):
         row = '|'.join(board[i:i+3])
         print(row)
