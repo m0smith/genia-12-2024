@@ -46,21 +46,20 @@ class Parser:
 
         if token_type == 'KEYWORD' and value == 'fn':
             return self.function_definition()
+        elif token_type == 'KEYWORD' and value == 'data':
+            return self.data_definition()
         elif token_type in {'IDENTIFIER', 'PUNCTUATION'}:
             # Attempt to parse a pattern
             tokens_copy = deque(self.tokens)
             try:
                 pattern = self.parse_pattern()
-                # After pattern, expect '='
                 if self.tokens and self.tokens[0][0] == 'OPERATOR' and self.tokens[0][1] == '=':
-                    # It's an assignment
                     return self.assignment(pattern=pattern)
                 else:
-                    # Not an assignment, rewind tokens and parse as expression statement
                     self.tokens = tokens_copy
                     return self.expression_statement()
             except self.SyntaxError:
-                # Not a pattern, parse as expression statement
+                self.tokens = tokens_copy
                 return self.expression_statement()
         elif token_type == 'IDENTIFIER':
             # Lookahead to check if it's an assignment
@@ -194,6 +193,68 @@ class Parser:
             'name': func_name,
             'definitions': definitions
         }
+
+    def data_definition(self):
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input after 'data'")
+
+        # Consume 'data'
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'KEYWORD' or value != 'data':
+            raise self.SyntaxError(f"Expected 'data' keyword at line {line}, column {column}")
+
+        # Expect type name
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input after 'data'")
+        token_type, type_name, line, column = self.tokens.popleft()
+        if token_type != 'IDENTIFIER':
+            raise self.SyntaxError(f"Expected type name after 'data' at line {line}, column {column}")
+
+        # Expect '='
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input in data definition")
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'OPERATOR' or value != '=':
+            raise self.SyntaxError(f"Expected '=' after type name at line {line}, column {column}")
+
+        constructors = []
+        while self.tokens:
+            token_type, ctor_name, line, column = self.tokens.popleft()
+            if token_type != 'IDENTIFIER':
+                raise self.SyntaxError(f"Expected constructor name at line {line}, column {column}")
+
+            params = []
+            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(':
+                self.tokens.popleft()
+                while self.tokens:
+                    if self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                        self.tokens.popleft()
+                        break
+                    param_token = self.tokens.popleft()
+                    if param_token[0] != 'IDENTIFIER':
+                        raise self.SyntaxError(f"Expected identifier in constructor params at line {param_token[2]}, column {param_token[3]}")
+                    params.append({'type': 'identifier', 'value': param_token[1]})
+                    if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ',':
+                        self.tokens.popleft()
+                        continue
+                    elif self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                        continue
+                    else:
+                        raise self.SyntaxError(f"Expected ',' or ')' in constructor params at line {param_token[2]}, column {param_token[3]}")
+
+            constructors.append({'name': ctor_name, 'parameters': params})
+
+            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '|':
+                self.tokens.popleft()
+                continue
+            else:
+                break
+
+        return {
+            'type': 'data_definition',
+            'name': type_name,
+            'constructors': constructors
+        }
   
 
     def parse_pattern(self):
@@ -253,7 +314,30 @@ class Parser:
             return self.parse_literal_pattern(token)
         
         elif token_type == 'IDENTIFIER':
-            if value == '_':
+            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(': 
+                self.tokens.popleft()  # consume '('
+                params = []
+                while self.tokens:
+                    if self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                        self.tokens.popleft()
+                        break
+                    params.append(self.parse_pattern())
+                    if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ',':
+                        self.tokens.popleft()
+                        continue
+                    elif self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                        continue
+                    else:
+                        next_tok = self.tokens[0]
+                        raise self.SyntaxError(f"Expected ',' or ')' in constructor pattern at line {next_tok[2]}, column {next_tok[3]}")
+                return {
+                    'type': 'constructor_pattern',
+                    'name': value,
+                    'parameters': params,
+                    'line': line,
+                    'column': column,
+                }
+            elif value == '_':
                 return {'type': 'wildcard', 'line': line, 'column': column}
             else:
                 return {'type': 'identifier', 'value': value, 'line': line, 'column': column}

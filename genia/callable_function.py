@@ -35,7 +35,7 @@ class CallableFunction:
                 return int(param['value']) == arg
             case _:
                 
-                raise ValueError(f"Unsupport parameter type: {param['type']}")
+                raise ValueError(f"Unsupported parameter type: {param['type']}")
             
     def match_list_pattern(self, pattern, arg):
         if not isinstance(arg, (list, LazySeq)):
@@ -80,7 +80,7 @@ class CallableFunction:
                 case 'number':
                     pass
                 case _:
-                    raise ValueError(f"Unsupport parameter type: {param['type']}")
+                    raise ValueError(f"Unsupported parameter type: {param['type']}")
         return local_env
 
     def bind_list_pattern(self, pattern, arg, local_env):

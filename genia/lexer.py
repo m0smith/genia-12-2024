@@ -20,8 +20,8 @@ class Lexer:
         ('OPERATOR', r'\.\.|[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
         ('PUNCTUATION', r'[()\[\]{},;|]'),                       # Punctuation
         ('NUMBER', r'\d+'),                                     # Integer numbers
+        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b|\bwhen\b|\bdata\b'),  # Keywords
         ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                      # Identifiers with *, +, -, /, ?
-        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b|\bwhen\b'),  # Keywords
         ('MISMATCH', r'.'),                                      # Any other character
     ]
 

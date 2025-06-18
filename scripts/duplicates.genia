@@ -1,0 +1,7 @@
+fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
+fn reduce(_, acc, []) -> acc
+fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+
+fn duplicates(value, n) -> reduce(fn(acc, _) -> [..acc, value], [], 1..n)
+
+print(duplicates("x", 5))
