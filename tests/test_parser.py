@@ -455,14 +455,14 @@ def test_parser_grouped_statements():
                         'statements': [
                             {
                                 'type': 'assignment',
-                                'pattern': 'a',
+                                'pattern': {'type': 'identifier', 'value': 'a'},
                                 'value': {'type': 'number', 'value': '1', 'line': 1, 'column': 14},
                                 'line': 1,
                                 'column': 4
                             },
                             {
                                 'type': 'assignment',
-                                'pattern': 'b',
+                                'pattern': {'type': 'identifier', 'value': 'b'},
                                 'value': {'type': 'number', 'value': '2', 'line': 1, 'column': 21},
                                 'line': 1,
                                 'column': 14
