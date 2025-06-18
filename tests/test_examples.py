@@ -36,4 +36,18 @@ def test_duplicate_with_reduce():
     """
     interp = GENIAInterpreter()
     assert interp.run(code) == [5,5,5]
-
+    
+def test_simple_assigment():
+    code = """
+    x = 1
+    """
+    interp = GENIAInterpreter()
+    assert interp.run(code) == 1
+    
+def test_local_assigment():
+    code = """
+    fn f() -> (x = 2)
+    f()
+    """
+    interp = GENIAInterpreter()
+    assert interp.run(code) == 1

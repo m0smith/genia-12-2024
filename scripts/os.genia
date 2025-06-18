@@ -16,10 +16,11 @@ fn not(v) when v -> FALSE | (_) -> TRUE
 
 fn grep (regex)                 -> (fn(list)    -> grep(regex, TRUE, list))
     |   (regex, rtnval)         -> (fn(list)    -> grep(regex, rtnval, list))
-    |   (regex, rtnval, seq)    ->  filter(
-                fn    (el) when el ~ regex     -> rtnval 
-                    | (_)                      -> not(rtnval),
-                    seq)
+    |   (regex, rtnval, seq)    ->  
+            filter(
+                fn (el) when el ~ regex     -> rtnval 
+                    | (_)                   -> not(rtnval),
+                seq)
 
 
 
