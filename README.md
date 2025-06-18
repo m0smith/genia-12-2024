@@ -13,7 +13,7 @@ GENIA is a concise and dynamic scripting language designed for data processing a
 
 ## Installation
 
-### Using Pipenv
+### Using Poetry
 
 1. Clone the repository:
    ```bash
@@ -23,12 +23,12 @@ GENIA is a concise and dynamic scripting language designed for data processing a
 
 2. Install dependencies:
    ```bash
-   pipenv install
+   poetry install
    ```
 
 3. Activate the environment:
    ```bash
-   pipenv shell
+   poetry shell
    ```
 
 4. Install the package:
@@ -86,7 +86,7 @@ echo -e "line1\nline2" | python -m genia_interpreter --awk script.genia
 To run tests:
 
 ```bash
-pipenv run pytest
+poetry run pytest
 ```
 
 ## License

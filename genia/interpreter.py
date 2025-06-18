@@ -17,6 +17,7 @@ from genia.lexer import Lexer
 from genia.parser import Parser
 from genia.seq import delay_seq, Sequence, count_seq, nth_seq
 from genia.hosted.os import files_in_paths
+import importlib
 
 def bind_list_pattern(pattern, arg, local_env):
     elements = pattern['elements']
@@ -264,7 +265,7 @@ class CallableFunction:
                     result = body(*args)
                 else:
                     module_name, func_name = body.rsplit('.', 1)
-                    module = __import__(module_name)
+                    module = importlib.import_module(module_name)
                     body_fn = getattr(module, func_name)
                     if not callable(body_fn):
                         raise ValueError(f"Target '{body}' is not callable.")

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "genia"
+version = "0.1.0"
+description = "GENIA - A concise scripting language interpreter for data processing and automation."
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{ include = "genia" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+autopep8 = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
