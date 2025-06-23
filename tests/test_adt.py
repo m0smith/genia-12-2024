@@ -34,3 +34,23 @@ def test_adt_pattern_match_none():
     interp = GENIAInterpreter()
     assert interp.run(code) == 0
 
+
+def test_trio_constructor():
+    code = """
+    data Trio = Trio(a, b, c)
+    Trio(1, 2, 3)
+    """
+    interp = GENIAInterpreter()
+    result = interp.run(code)
+    assert result == {'type': 'Trio', 'ctor': 'Trio', 'values': [1, 2, 3]}
+
+
+def test_trio_pattern_match():
+    code = """
+    data Trio = Trio(a, b, c)
+    fn sum_trio(Trio(x, y, z)) -> x + y + z
+    sum_trio(Trio(1, 2, 3))
+    """
+    interp = GENIAInterpreter()
+    assert interp.run(code) == 6
+
