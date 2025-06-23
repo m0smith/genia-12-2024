@@ -20,12 +20,36 @@ fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
 fn reduce(_, acc, []) -> acc
 fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
-fn duplicates(value, n) -> reduce(fn(acc, _) -> [..acc, value], [], 1..n)
+fn map(f) -> fn(lst) -> map(f, lst)
+fn map(_, []) -> []
+    | (f, [h, ..r]) -> [f(h), ..map(f, r)]
+
+fn map(_, [], _) -> []
+    | (_, _, []) -> []
+    | (f, [h, ..r], [h2, ..r2]) -> [f(h, h2), ..map(f, r, r2)]
+
+fn add() -> 0
+fn add(x) -> x | (x, y) -> x + y
+
+print(map(add, [1]))
+print(map(add, [1,2,3], [10,11,12]))
+
+fn constantly(v) -> fn(_) -> v 
+fn constantly()  -> v
+
+fn interpose(_, [])             -> []
+fn interpose(_, [h])            -> [h]
+fn interpose(item, [hf, ..r])   -> reduce(fn(acc, el) -> [..acc, item, el], [hf], r)
+
+fn duplicates(value, n) -> map(constantly(value), 1..n)
+
+data Player = X | Y
+
+data Pos = Player | A(label)
 
 fn board_full?(board) -> every?(nequal?(" "), board)
 
 fn create_board() -> duplicates(" ", 9)
-
 
 fn print_board(
     [b0 b1 b2 
