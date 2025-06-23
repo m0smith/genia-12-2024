@@ -106,6 +106,24 @@ print(square(4))
 
 ---
 
+### Algebraic Data Types
+GENIA supports simple tagged unions using the `data` keyword. Constructors are
+regular functions that build structured values which can be decomposed through
+pattern matching.
+
+Example:
+```genia
+data Trio = Trio(a, b, c)
+
+fn first(Trio(x, _, _)) -> x
+first(Trio(1, 2, 3))
+```
+
+The call above evaluates to `1` as the `first` function matches the `Trio`
+constructor and extracts its first field.
+
+---
+
 ### Command-Line Arguments
 Command-line arguments are accessed via `$1`, `$2`, ... `$NF` for the total count.
 
