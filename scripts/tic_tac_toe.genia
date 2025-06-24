@@ -1,5 +1,4 @@
 fn set_board(b, i, v) -> foreign "genia.hosted.tictactoe.set_board"
-fn check_win(b, p) -> foreign "genia.hosted.tictactoe.check_win"
 fn input(prompt) -> foreign "builtins.input"
 fn int(s) -> foreign "builtins.int"
 
@@ -61,6 +60,7 @@ fn board_full?(board) -> every?(nequal?(" "), board)
 
 fn create-board() -> duplicates(" ", 9)
 
+fn as-trio() -> 0..7
 fn as-trio(b) -> fn(n) -> as-trio(b, n)
 fn as-trio
     ([a,b,c, .._], 0) -> Trio(a,b,c) 
@@ -86,6 +86,7 @@ fn as-trio
         _,b,_,
         _,_,c], 7)      -> Trio(a,b,c) 
 
+fn trios(board) -> map(as-trio(board), as-trio())
 
 fn printer(Trio(a, b, c)) -> print(a + "|" + b  + "|" + c)
 fn printer(board) -> 
@@ -112,7 +113,7 @@ fn check-win(board, p) ->
     # print("check-win board", map(as-trio(board), 0..7));
     any?(
         fn(t) -> check-win(t, p), 
-        map(as-trio(board), 0..7))
+        trios(board))
 )
 
 fn switch("X") -> "O" | (_) -> "X"
