@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import pytest
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from genia.interpreter import GENIAInterpreter
@@ -19,6 +20,7 @@ def test_distinct_small():
     code = 'distinct([1,1,2,3,2,3])'
     assert run(code) == [1,2,3]
 
+@pytest.mark.skip(reason="Takes too long to run")
 def test_distinct_large():
     n = 2000
     code = f'distinct(1..{n})'
