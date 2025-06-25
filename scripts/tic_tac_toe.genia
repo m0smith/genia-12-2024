@@ -56,7 +56,7 @@ data Pos = Player | A(label)
 
 data Trio = Trio(a,b,c)
 
-fn board_full?(board) -> every?(nequal?(" "), board)
+fn board_full?([.._, " ", .._]) -> FALSE | (_) -> TRUE
 
 fn create-board() -> duplicates(" ", 9)
 
