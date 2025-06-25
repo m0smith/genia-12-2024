@@ -23,6 +23,39 @@ def bind_list_pattern(pattern, arg, local_env):
     elements = pattern['elements']
     if len(elements) == 0:
         return
+    # Handle pattern of form [..pre, mid, ..post]
+    if (
+        len(elements) == 3
+        and elements[0]['type'] == 'unary_operator' and elements[0]['operator'] == '..'
+        and elements[2]['type'] == 'unary_operator' and elements[2]['operator'] == '..'
+        and isinstance(arg, list)
+    ):
+        pre_name = elements[0]['operand']['value']
+        post_name = elements[2]['operand']['value']
+        mid_pat = elements[1]
+        cf = CallableFunction('_bind_helper')
+        for i, val in enumerate(arg):
+            if cf.match_parameter(mid_pat, val):
+                local_env[pre_name] = arg[:i]
+                local_env[post_name] = arg[i+1:]
+                # Bind middle element if needed
+                match mid_pat.get('type'):
+                    case 'identifier':
+                        local_env[mid_pat['value']] = val
+                    case 'wildcard':
+                        pass
+                    case 'list_pattern':
+                        bind_list_pattern(mid_pat, val, local_env)
+                    case 'constructor_pattern':
+                        cf.bind_constructor_pattern(mid_pat, val, local_env)
+                    case 'number_literal':
+                        if val != mid_pat['value']:
+                            raise RuntimeError("Pattern mismatch")
+                    case 'string_literal':
+                        if val != mid_pat['value']:
+                            raise RuntimeError("Pattern mismatch")
+                return
+        raise RuntimeError("No matching element for pattern")
     for i, element in enumerate(elements):
         if element['type'] == 'unary_operator' and element['operator'] == "..":
             if isinstance(arg, list):
@@ -143,12 +176,46 @@ class CallableFunction:
 
     def match_list_pattern_list(self, pattern, lst):
         elements = pattern['elements']
-        if len(elements) == 0:  # Match an empty list
+        if len(elements) == 0:
             return len(lst) == 0
-        if len(elements) >= 2 and elements[-1]['type'] == 'unary_operator' and elements[-1]['operator'] == "..":
-            # Match `[first, ..rest]`
-            return len(lst) >= len(elements) - 1
-        return len(lst) == len(elements)  # Exact length match
+
+        # Special case: [..pre, mid, ..post]
+        if (
+            len(elements) == 3
+            and elements[0]['type'] == 'unary_operator' and elements[0]['operator'] == '..'
+            and elements[2]['type'] == 'unary_operator' and elements[2]['operator'] == '..'
+        ):
+            mid = elements[1]
+            return any(self.match_parameter(mid, v) for v in lst)
+
+        spread_indices = [i for i,e in enumerate(elements) if e['type']=='unary_operator' and e['operator']=='..']
+        if len(spread_indices) == 0:
+            if len(lst) != len(elements):
+                return False
+            return all(self.match_parameter(p,v) for p,v in zip(elements,lst))
+        if len(spread_indices) == 1 and spread_indices[0] == len(elements)-1:
+            if len(lst) < len(elements)-1:
+                return False
+            for p,v in zip(elements[:-1], lst[:len(elements)-1]):
+                if not self.match_parameter(p,v):
+                    return False
+            return True
+        # Fallback to length check
+        if len(spread_indices) == 1:
+            idx = spread_indices[0]
+            prefix = elements[:idx]
+            suffix = elements[idx+1:]
+            if len(lst) < len(prefix)+len(suffix):
+                return False
+            for p,v in zip(prefix, lst[:len(prefix)]):
+                if not self.match_parameter(p,v):
+                    return False
+            for p,v in zip(suffix, lst[-len(suffix):]):
+                if not self.match_parameter(p,v):
+                    return False
+            return True
+
+        return False
 
     def match_list_pattern_lazy_seq(self, pattern, lazy_seq):
         elements = pattern['elements']

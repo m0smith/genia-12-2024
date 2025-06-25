@@ -522,6 +522,29 @@ def test_regex(interpreter_fixture):
     results = interpreter_fixture.run(code)
     assert results == 42
 
+def test_list_pattern_contains_literal(interpreter_fixture):
+    code = """
+        TRUE  = 1 == 1
+        FALSE = 1 == 2
+        fn the_answer([..pre, 1, ..post]) -> TRUE
+        fn the_answer(_) -> FALSE
+        the_answer([0,1,2,3])
+    """
+    result = interpreter_fixture.run(code)
+    assert result == True
+
+def test_list_pattern_contains_constructor(interpreter_fixture):
+    code = """
+        TRUE  = 1 == 1
+        FALSE = 1 == 2
+        data Trio = Trio(a,b,c)
+        fn the_answer([..pre, Trio(1,_,_), ..post]) -> TRUE
+        fn the_answer(_) -> FALSE
+        the_answer([Trio(0,0,0), Trio(1,2,3)])
+    """
+    result = interpreter_fixture.run(code)
+    assert result == True
+
 def test_delay(interpreter_fixture):
     code = """
        f = delay(520)
