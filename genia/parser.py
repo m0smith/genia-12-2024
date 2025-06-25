@@ -282,14 +282,20 @@ class Parser:
                 elif peek_token.type == 'IDENTIFIER' and peek_token.value == '_':
                     self.tokens.popleft()  # Consume '_'
                     elements.append({'type': 'wildcard'})
-                elif peek_token.type == 'DOT_DOT':
+                elif peek_token.type == 'OPERATOR' and peek_token.value == '..':
                     self.tokens.popleft()  # Consume '..'
                     if not self.tokens:
                         raise self.SyntaxError(f"Unexpected end of input after '..' in list pattern at line {peek_token.line}, column {peek_token.column}")
                     next_token = self.tokens.popleft()
                     if next_token.type != 'IDENTIFIER':
                         raise self.SyntaxError(f"Expected identifier after '..' in list pattern at line {next_token.line}, column {next_token.column}, but found {next_token.type} '{next_token.value}'")
-                    elements.append({'type': 'spread', 'value': next_token.value})
+                    elements.append({
+                        'type': 'unary_operator',
+                        'operator': '..',
+                        'operand': {'type': 'identifier', 'value': next_token.value, 'line': next_token.line, 'column': next_token.column},
+                        'line': peek_token.line,
+                        'column': peek_token.column
+                    })
                 elif peek_token.type in {'NUMBER', 'STRING', 'RAW_STRING'}:
                     # Handle literal patterns within lists
                     lit_pattern = self.parse_literal_pattern()
@@ -299,9 +305,9 @@ class Parser:
                     nested_pattern = self.parse_grouped_pattern()
                     elements.append(nested_pattern)
                 else:
-                    # Handle nested patterns or other expression types if necessary
-                    expr = self.expression()
-                    elements.append(expr)
+                    # Handle nested patterns recursively
+                    nested = self.parse_pattern()
+                    elements.append(nested)
             return {'type': 'list_pattern', 'elements': elements, 'line': line, 'column': column}
         
         elif token_type == 'PUNCTUATION' and value == '(':
