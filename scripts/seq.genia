@@ -1,9 +1,105 @@
+TRUE = 1 == 1
+FALSE = 1 == 2
+
+fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
+fn reduce(_, acc, []) -> acc
+fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+
+fn count([]) -> 0
+fn count(list) -> reduce(fn (acc, _) -> acc + 1, 0, list)
+
+fn map(f) -> fn(list) -> map(f, list)
+fn map(_, []) -> []
+fn map(func, list) -> reduce(fn (acc, el) -> [..acc, func(el)], [], list)
+
+fn filter(f) -> fn(list) -> filter(f, list)
+fn filter(_, []) -> []
+fn filter(pred, list) -> reduce(fn (acc, el) when pred(el) -> [..acc, el] | (acc, _) -> acc, [], list)
+
+fn take(_, []) -> []
+fn take (n, seq) -> reduce(fn (acc, el) when count(acc) < n -> [..acc, el] | (acc, _) -> acc, [], seq)
+fn take(n) -> fn(seq) -> take(n, seq)
+
+fn reverse() -> fn(list) -> reverse(list)
+fn reverse([]) -> []
+fn reverse(list) -> reduce(fn (acc, el) -> [el, ..acc], [], list)
+
+fn any?(pred) -> fn(list) -> any?(pred, list)
+fn any?(_, []) -> FALSE
+fn any?(pred, [head, ..tail]) when pred(head) -> TRUE
+fn any?(pred, [head, ..tail]) -> any?(pred, tail)
+
+fn every?(pred) -> fn(list) -> every?(pred, list)
+fn every?(_, []) -> TRUE
+fn every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
+fn every?(pred, [head, ..tail]) -> FALSE
+
+fn interpose(_, [])             -> []
+fn interpose(_, [h])            -> [h]
+fn interpose(item, [hf, ..r])   -> reduce(fn(acc, el) -> [..acc, item, el], [hf], r)
+
+fn interleve(l) -> l
+fn interleve(_, []) -> [] 
+fn interleve([], _) -> []
+fn interleve([h1, ..r1], [h2, ..r2]) -> [h1, h2, ..interleve(r1, r2)]
+fn interleve
+    (_, [], _) -> [] 
+    | ([], _, _) -> [] 
+    | (_, _, []) -> [] 
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3]) -> [h1, h2, h3, ..interleve(r1, r2, r3)]
+fn interleve
+    (_, [], _, _) -> [] 
+    | ([], _, _, _) -> [] 
+    | (_, _, [],_) -> [] 
+    | (_, _, _, []) -> [] 
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3], [h4, ..r4]) -> [h1, h2, h3, h4, ..interleve(r1, r2, r3, r4)]
+
+fn distinct() -> []
+fn distinct([]) -> []
+fn distinct(list) -> distinct([], list)
+fn distinct(seen, []) -> seen
+fn distinct(seen, [head, ..tail]) when any?(equal?(head), seen) -> distinct(seen, tail)
+fn distinct(seen, [head, ..tail]) -> [head, ..distinct([head, ..seen], tail)]
+
+fn nequal?(v) -> fn(y) -> v != y
+
+fn distinct2() -> []
+fn distinct2([]) -> []
+fn distinct2([head, ..tail]) -> [head, ..distinct2(filter(nequal?(head), tail))]
+
 
 fn inc(i) -> i + 1
 fn iterate(f, v) -> delayseq(v, delay(iterate(f, f(v))))
 fn numbers () -> iterate(inc, 1)
-trace()
 [a,b,c] = numbers()
 print(a)  // prints 1
 print(b)  // prints 2
 print(c)  // prints 3
+
+fn add(x, y) -> x + y
+fn double(x) -> x + x
+fn pos?(x) -> x > 0
+fn npos?(x) -> x <= 0
+
+ls = lazyseq([1,2,3])
+
+print("Sum of numbers from 1 to 3: ", reduce(add, 0 1..3))
+print("Double the numbers from 10 to 20: ", map(double, 10..20))
+print("Only the positive numbers from -10 to 10:", filter(pos?, (-10)..10))
+
+fn double_pos(coll) ->
+    reverse(map(double, filter(pos? coll)))
+
+print("Double and reverse the positive numbers from -10 to 10:" , double_pos((-10)..10))
+
+print("Any pos in negative list?", any?(pos?, (-10)..-1))
+print("Any pos in positive list?", any?(pos?, (-10)..12))
+
+print("Distinct empy list", distinct2([]))
+print("Distinct all ones list", distinct2([1,1,1,1,1,1,1]))
+print("Distinct all ones and 'one's list", distinct2([1,1,1,1,1,1,1, "one"]))
+
+print("invert neg numbers are invert pos?", filter(npos?, (-10)..10))
+print("Count of list [1,2,3] => ", count([1,2,3]))
+print("Take 2 from list [1,2,3] => ", take(2, [1,2,3]))
+print("Count lazyseq", count(ls))

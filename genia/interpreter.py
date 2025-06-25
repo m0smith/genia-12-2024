@@ -348,6 +348,14 @@ class Interpreter:
             return self.evaluate(expr)
         finally:
             self.pop_env()
+            
+    def printenv(self, name=None):
+        if name:
+            values = [{name: env[name]} for env in self.env_stack + [self.functions] if name in env]
+            rtnval =  values if values else f"{name} not found"
+            self.write_to_stderr(str(rtnval))
+        else:
+            self.write_to_stderr(str(self.env_stack))
 
     def add_hosted_functions(self):
         # Register foreign functions with varying arities
@@ -357,9 +365,8 @@ class Interpreter:
         for i in range(1, 8):
             params = [f"msg{j}" for j in range(1, i + 1)]
             self.register_foreign_function("print", self.write_to_stdout, parameters=params)
-        self.register_foreign_function("printenv", lambda: self.write_to_stderr(str(self.environment)))
-        self.register_foreign_function("printenv", lambda name: self.write_to_stderr(str(self.environment.get(name, f"{name} not found"))),
-                                       parameters=["name"])
+        self.register_foreign_function("printenv", self.printenv)
+        self.register_foreign_function("printenv", self.printenv, parameters=["name"])
         self.register_foreign_function("trace", self.do_trace)
 
     def register_foreign_function(self, name, function, parameters=None, guard=None, line=0, column=0):

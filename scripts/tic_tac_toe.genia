@@ -36,7 +36,7 @@ fn map(_, [], _) -> []
     | (_, _, []) -> []
     | (f, [h, ..r], [h2, ..r2]) -> [f(h, h2), ..map(f, r, r2)]
 
-fn add() -> 0
+fn add()  -> 0
 fn add(x) -> x | (x, y) -> x + y
 
 print(map(add, [1]))
@@ -99,22 +99,15 @@ fn printer(board) ->
     printer(as-trio(board, 2));
 )
 
-
-board = create-board()
-
-fn check-win(Trio(a,b,c), p) when equal?(p,a,b,c) -> 
-(
-    TRUE
-)
-fn check-win(Trio(_,_,_), _) -> FALSE
+fn check-win(p) -> fn(t) -> check-win(t, p)
+fn check-win(Trio(a, b, c), p) -> equal?(p, a, b, c) 
 fn check-win(board, p) ->
 (
-    
-    # print("check-win board", map(as-trio(board), 0..7));
     any?(
-        fn(t) -> check-win(t, p), 
+        check-win(p), 
         trios(board))
 )
+board = create-board()
 
 fn switch("X") -> "O" | (_) -> "X"
 

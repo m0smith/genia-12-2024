@@ -1,3 +1,41 @@
+
+
 x = delay(1)
 y = 2
 print("Delayed x:", x)
+
+fn repeat(v) -> delayseq(v, delay(repeat(v)))
+
+fn take(0, lst) -> [] 
+    | (1, [h, .._]) -> [h]
+    | (_, []) -> []
+    | (2, [h1, h2, .._]) -> [h1, h2]
+    | (n, [h, ..r]) -> take(n - 1, [h], r)
+    | (_, acc, []) -> acc
+    | (0, acc, _) -> acc
+
+fn take(n, acc, [h, ..r]) when n > 0 -> take(n - 1, [..acc, h], r)
+
+print(take(1, [1,2,3]))
+print(take(5, repeat("a")))
+
+fn interleve(l) -> l
+fn interleve(_, []) -> [] 
+fn interleve([], _) -> []
+fn interleve([h1, ..r1], [h2, ..r2]) -> [h1, h2, ..interleve(r1, r2)]
+fn interleve
+      (_, [], _) -> [] 
+    | ([], _, _) -> [] 
+    | (_, _, []) -> [] 
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3]) -> [h1, h2, h3, ..interleve(r1, r2, r3)]
+fn interleve
+      (_, [], _, _) -> [] 
+    | ([], _, _, _) -> [] 
+    | (_, _, [], _) -> [] 
+    | (_, _, _, []) -> [] 
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3], [h4, ..r4]) -> [h1, h2, h3, h4, ..interleve(r1, r2, r3, r4)]
+
+fn concat([]) -> "" | (acc, []) -> acc | ([h, ..r]) -> concat(str(h), r) | (acc, [h, ..r]) -> concat(acc + str(h), r)
+print(concat([1,2,3]))
+print(">>", concat(interleve([1,2,3], repeat(","), ["a", "b","c"], repeat("\n"))))
+
