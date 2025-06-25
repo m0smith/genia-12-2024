@@ -39,33 +39,36 @@ fn interpose(_, [h])            -> [h]
 fn interpose(item, [hf, ..r])   -> reduce(fn(acc, el) -> [..acc, item, el], [hf], r)
 
 fn interleve(l) -> l
-fn interleve(_, []) -> [] 
-fn interleve([], _) -> []
-fn interleve([h1, ..r1], [h2, ..r2]) -> [h1, h2, ..interleve(r1, r2)]
-fn interleve
-    (_, [], _) -> [] 
-    | ([], _, _) -> [] 
-    | (_, _, []) -> [] 
-    | ([h1, ..r1], [h2, ..r2], [h3, ..r3]) -> [h1, h2, h3, ..interleve(r1, r2, r3)]
-fn interleve
-    (_, [], _, _) -> [] 
-    | ([], _, _, _) -> [] 
-    | (_, _, [],_) -> [] 
-    | (_, _, _, []) -> [] 
-    | ([h1, ..r1], [h2, ..r2], [h3, ..r3], [h4, ..r4]) -> [h1, h2, h3, h4, ..interleve(r1, r2, r3, r4)]
+fn interleve(l1, l2) -> interleve(l1, l2, [])
+fn interleve([], _, acc) -> reverse(acc)
+    | (_, [], acc) -> reverse(acc)
+    | ([h1, ..r1], [h2, ..r2], acc) -> interleve(r1, r2, [h2, h1, ..acc])
+fn interleve(l1, l2, l3) -> interleve(l1, l2, l3, [])
+fn interleve([], _, _, acc) -> reverse(acc)
+    | (_, [], _, acc) -> reverse(acc)
+    | (_, _, [], acc) -> reverse(acc)
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3], acc) -> interleve(r1, r2, r3, [h3, h2, h1, ..acc])
+fn interleve(l1, l2, l3, l4) -> interleve(l1, l2, l3, l4, [])
+fn interleve([], _, _, _, acc) -> reverse(acc)
+    | (_, [], _, _, acc) -> reverse(acc)
+    | (_, _, [], _, acc) -> reverse(acc)
+    | (_, _, _, [], acc) -> reverse(acc)
+    | ([h1, ..r1], [h2, ..r2], [h3, ..r3], [h4, ..r4], acc) -> interleve(r1, r2, r3, r4, [h4, h3, h2, h1, ..acc])
 
 fn distinct() -> []
 fn distinct([]) -> []
-fn distinct(list) -> distinct([], list)
-fn distinct(seen, []) -> seen
-fn distinct(seen, [head, ..tail]) when any?(equal?(head), seen) -> distinct(seen, tail)
-fn distinct(seen, [head, ..tail]) -> [head, ..distinct([head, ..seen], tail)]
+fn distinct(list) -> distinct(list, [])
+fn distinct([], acc) -> reverse(acc)
+fn distinct([head, ..tail], acc) when any?(equal?(head), acc) -> distinct(tail, acc)
+fn distinct([head, ..tail], acc) -> distinct(tail, [head, ..acc])
 
 fn nequal?(v) -> fn(y) -> v != y
 
 fn distinct2() -> []
 fn distinct2([]) -> []
-fn distinct2([head, ..tail]) -> [head, ..distinct2(filter(nequal?(head), tail))]
+fn distinct2(list) -> distinct2(list, [])
+fn distinct2([], acc) -> reverse(acc)
+    | ([head, ..tail], acc) -> distinct2(filter(nequal?(head), tail), [head, ..acc])
 
 
 fn inc(i) -> i + 1
