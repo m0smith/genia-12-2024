@@ -169,6 +169,12 @@ class Parser:
                         else:
                             raise self.SyntaxError(f"Expected ',' or ')' after parameter at line {line}, column {column}")
 
+                # Check for 'when' guard on alternative definition
+                guard = None
+                if self.tokens and self.tokens[0][0] == 'KEYWORD' and self.tokens[0][1] == 'when':
+                    self.tokens.popleft()  # consume 'when'
+                    guard = self.expression()
+
                 # Expect '->'
                 if not self.tokens:
                     raise self.SyntaxError("Unexpected end of input after alternative parameters")
@@ -181,7 +187,7 @@ class Parser:
 
                 definitions.append({
                     'parameters': parameters,
-                    'guard': None,  # Guards are only allowed in the first definition
+                    'guard': guard,
                     'body': body.get('value') if body.get('type') == 'foreign' else body,
                     'foreign': body.get('type') == 'foreign',
                 })

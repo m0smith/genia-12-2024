@@ -246,6 +246,55 @@ def test_function_with_guard():
     assert strip_metadata(ast) == strip_metadata(expected_ast)
 
 
+def test_multi_arity_with_guards():
+    code = """fn foo(x) when x > 10 -> x
+| (x) when x < 5 -> x + 1
+"""
+    lexer = Lexer(code)
+    tokens = lexer.tokenize()
+
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected_ast = [
+        {
+            "type": "function_definition",
+            "name": "foo",
+            "definitions": [
+                {
+                    "parameters": [{"type": "identifier", "value": "x"}],
+                    "guard": {
+                        "type": "comparator",
+                        "operator": ">",
+                        "left": {"type": "identifier", "value": "x"},
+                        "right": {"type": "number", "value": "10"}
+                    },
+                    "body": {"type": "identifier", "value": "x"},
+                    "foreign": False
+                },
+                {
+                    "parameters": [{"type": "identifier", "value": "x"}],
+                    "guard": {
+                        "type": "comparator",
+                        "operator": "<",
+                        "left": {"type": "identifier", "value": "x"},
+                        "right": {"type": "number", "value": "5"}
+                    },
+                    "body": {
+                        "type": "operator",
+                        "operator": "+",
+                        "left": {"type": "identifier", "value": "x"},
+                        "right": {"type": "number", "value": "1"}
+                    },
+                    "foreign": False
+                },
+            ]
+        }
+    ]
+
+    assert strip_metadata(ast) == strip_metadata(expected_ast)
+
+
 def test_ffi_simple():
     code = 'fn rem(x,y) -> foreign "math.remainder"'
     lexer = Lexer(code)

@@ -185,6 +185,18 @@ def test_interpreter_function_with_guard(interpreter_fixture):
     result = interpreter_fixture.run(code)
     assert 30 == result
 
+
+def test_interpreter_multiple_guards(interpreter_fixture):
+    code = """
+    fn foo(x) when x > 10 -> x * 2
+        | (x) when x < 5 -> x + 2;
+
+    foo(3);
+    foo(15);
+    """
+    result = interpreter_fixture.run(code)
+    assert 30 == result
+
 def test_interpreter_cons_list_reduce(interpreter_fixture):
     code = """
     trace()
