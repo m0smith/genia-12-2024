@@ -1,4 +1,4 @@
-Here’s a specification for the GENIA language incorporating the current features, including the FFI system, extended identifier rules, and module-like functionality.
+Here’s a specification for the GENIA language incorporating the current features, including the FFI system, extended identifier rules, and kit-like functionality.
 
 ---
 
@@ -12,7 +12,7 @@ GENIA is intended to have has small a footprint as possible to make it possible 
 ## Features
 - Dynamic typing with extensive support for identifiers, including Unicode.
 - Flexible function definitions supporting native and foreign implementations.
-- A module system inspired by JavaScript for organizing code.
+- A kit system inspired by JavaScript modules for organizing code.
 - Operator context sensitivity to distinguish identifiers and operators.
 
 ---
@@ -91,8 +91,8 @@ fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
 fn cons() -> fn () -> 0;
 ---
 
-### Modules
-Modules organize code into reusable namespaces.
+### Kits
+Kits organize code into reusable namespaces.
 
 
 
@@ -153,15 +153,17 @@ print(sub(10, 4)); // Output: 6
 print(rem(7, 3));  // Output: 1.0
 ```
 
-#### Using Modules
+#### Using Kits
 ```genia
 // File: math.genia
-export fn square(x) -> x * x;
-export fn cube(x) -> x * x * x;
-export const PI = 3.14159;
+kit math {
+    export fn square(x) -> x * x;
+    export fn cube(x) -> x * x * x;
+    export const PI = 3.14159;
+}
 
 // Main Script
-import { square, cube, PI } from "math";
+import math();
 
 print(square(3));  // Output: 9
 print(cube(2));    // Output: 8
@@ -171,11 +173,11 @@ print(PI);         // Output: 3.14159
 ---
 
 ## Future Enhancements
-1. **Module Aliases**: Allow imports with aliases for convenience.
+1. **Kit Aliases**: Allow imports with aliases for convenience.
    ```genia
    import * as math from "math";
    ```
-2. **Remote Modules**: Enable imports from URLs or APIs.
+2. **Remote Kits**: Enable imports from URLs or APIs.
    ```genia
    import "https://example.com/my_module.genia" as remote;
    ```

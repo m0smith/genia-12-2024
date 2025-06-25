@@ -383,12 +383,23 @@ class Delay:
                         raise e
         return self._value
 
+
+class Kit:
+    def __init__(self, name, parameters, body):
+        self.name = name
+        self.parameters = parameters
+        self.body = body
+        self.env = {}
+        self.exports = {}
+
 class Interpreter:
     def __init__(self):
         self.env_stack = [dict()]  # Stack of environments for variable scopes
         self.functions = {}         # Stores function definitions
         self.call_stack = deque()   # For TCO
         self.data_types = {}
+        self.kits = {}
+        self.current_kit = None
 
         self.stdin = None
         self.stdout = None
@@ -659,6 +670,10 @@ class Interpreter:
             self.environment[pattern['value']] = value
         if genia.trace:
             self.write_to_stderr(f"TRACE: {pattern} = {value}")
+        if node.get('export') and self.current_kit:
+            if pattern_type != 'identifier':
+                raise RuntimeError('Only identifier assignments can be exported')
+            self.current_kit.exports[pattern['value']] = value
         return value
 
     def eval_data_definition(self, node):
@@ -830,6 +845,8 @@ class Interpreter:
 
         if genia.trace:
             self.write_to_stderr(f"TRACE: Function '{name}' defined with definitions: {func.definitions}")
+        if node.get('export') and self.current_kit:
+            self.current_kit.exports[name] = func
         return func
 
     def eval_function_call(self, node):
@@ -896,6 +913,48 @@ class Interpreter:
             result = self.evaluate(statement)
         return result
 
+    def eval_kit_declaration(self, node):
+        kit = Kit(node['name'], node.get('parameters', []), node['body'])
+        self.kits[node['name']] = kit
+        return None
+
+    def execute_kit(self, kit, args):
+        if len(args) != len(kit.parameters):
+            raise RuntimeError(f"Kit '{kit.name}' expects {len(kit.parameters)} arguments")
+        kit.env.clear()
+        kit.exports.clear()
+        self.push_env(kit.env)
+        prev = self.current_kit
+        self.current_kit = kit
+        try:
+            for param, value in zip(kit.parameters, args):
+                if param['type'] == 'identifier':
+                    kit.env[param['value']] = value
+                else:
+                    bind_list_pattern(param, value, kit.env)
+            for stmt in kit.body:
+                self.evaluate(stmt)
+        finally:
+            self.current_kit = prev
+            self.pop_env()
+
+    def reload_kit(self, name, args=None):
+        kit = self.kits.get(name)
+        if not kit:
+            raise RuntimeError(f"Unknown kit '{name}'")
+        args = args or []
+        self.execute_kit(kit, args)
+
+    def eval_import(self, node):
+        kit = self.kits.get(node['name'])
+        if not kit:
+            raise RuntimeError(f"Unknown kit '{node['name']}'")
+        arg_values = [self.evaluate(a) for a in node.get('arguments', [])]
+        self.execute_kit(kit, arg_values)
+        for k, v in kit.exports.items():
+            self.environment[k] = v
+        return None
+
     def eval_expression_statement(self, node):
         """
         Evaluate an expression statement node.
@@ -906,6 +965,8 @@ class Interpreter:
         """
         Create a closure context by copying the current environment, excluding special variables.
         """
+        if self.current_kit:
+            return self.current_kit.env
         keys_to_exclude = {"NF", "NR", "$0", "$ARGS", "$NF"}
         return {k: v for k, v in self.environment.items() if k not in keys_to_exclude}
 
