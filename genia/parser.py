@@ -48,6 +48,12 @@ class Parser:
             return self.function_definition()
         elif token_type == 'KEYWORD' and value == 'data':
             return self.data_definition()
+        elif token_type == 'KEYWORD' and value == 'kit':
+            return self.kit_declaration()
+        elif token_type == 'KEYWORD' and value == 'import':
+            return self.import_statement()
+        elif token_type == 'KEYWORD' and value == 'export':
+            return self.export_statement()
         elif token_type in {'IDENTIFIER', 'PUNCTUATION'}:
             # Attempt to parse a pattern
             tokens_copy = deque(self.tokens)
@@ -732,3 +738,87 @@ class Parser:
             'line': line,
             'column': column
         }
+
+    def kit_declaration(self):
+        # Consume 'kit'
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'KEYWORD' or value != 'kit':
+            raise self.SyntaxError(f"Expected 'kit' keyword at line {line}, column {column}")
+
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input after 'kit'")
+        token_type, name, line, column = self.tokens.popleft()
+        if token_type != 'IDENTIFIER':
+            raise self.SyntaxError(f"Expected kit name at line {line}, column {column}")
+
+        parameters = []
+        if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(':
+            self.tokens.popleft()
+            while self.tokens:
+                if self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                    self.tokens.popleft()
+                    break
+                parameters.append(self.parse_pattern())
+                if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ',':
+                    self.tokens.popleft()
+                    continue
+                elif self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                    continue
+                else:
+                    t = self.tokens[0]
+                    raise self.SyntaxError(f"Expected ',' or ')' after parameter at line {t[2]}, column {t[3]}")
+
+        if not self.tokens or not (self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '{'):
+            raise self.SyntaxError(f"Expected '{{' to start kit body at line {line}, column {column}")
+        self.tokens.popleft()
+
+        statements = []
+        while self.tokens:
+            if self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '}':
+                self.tokens.popleft()
+                break
+            stmt = self.statement()
+            statements.append(stmt)
+            if self.tokens and ((self.tokens[0][0] == 'SEMICOLON') or (self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ';')):
+                self.tokens.popleft()
+
+        return {'type': 'kit_declaration', 'name': name, 'parameters': parameters, 'body': statements}
+
+    def import_statement(self):
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'KEYWORD' or value != 'import':
+            raise self.SyntaxError(f"Expected 'import' keyword at line {line}, column {column}")
+
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input after 'import'")
+        token_type, name, line, column = self.tokens.popleft()
+        if token_type != 'IDENTIFIER':
+            raise self.SyntaxError(f"Expected kit name after 'import' at line {line}, column {column}")
+
+        arguments = []
+        if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(':
+            self.tokens.popleft()
+            while self.tokens:
+                if self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                    self.tokens.popleft()
+                    break
+                arguments.append(self.expression())
+                if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ',':
+                    self.tokens.popleft()
+                    continue
+                elif self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')':
+                    continue
+                else:
+                    t = self.tokens[0]
+                    raise self.SyntaxError(f"Expected ',' or ')' in import arguments at line {t[2]}, column {t[3]}")
+
+        return {'type': 'import', 'name': name, 'arguments': arguments}
+
+    def export_statement(self):
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'KEYWORD' or value != 'export':
+            raise self.SyntaxError(f"Expected 'export' keyword at line {line}, column {column}")
+
+        stmt = self.statement()
+        stmt['export'] = True
+        return stmt
