@@ -292,6 +292,22 @@ def test_range():
     ]
     assert result == expected
 
+def test_negative_range():
+    code = "-10..10"
+    result = parse(code)
+    expected = [{
+        'type': 'expression_statement',
+        'expression': {
+            'type': 'operator', 'operator': '..',
+            'left': {
+                'type': 'unary_operator', 'operator': '-',
+                'operand': {'type': 'number', 'value': '10'}
+            },
+            'right': {'type': 'number', 'value': '10'}
+        }
+    }]
+    assert strip_metadata(result) == strip_metadata(expected)
+
 
 def test_list_destructuring():
     code = "[first, ..rest]"

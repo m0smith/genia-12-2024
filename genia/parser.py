@@ -504,13 +504,26 @@ class Parser:
         """
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
-        elif token_type == 'OPERATOR' and value in {'-', '+', '..'}:
+        elif token_type == 'OPERATOR' and value in {'-', '+'}:
+            # Parse the operand of unary '+' and '-' with a higher precedence so
+            # that expressions like `-1..10` are parsed as `( -1 ) .. 10` rather
+            # than `-(1 .. 10)`.
+            operand = self.expression(self.PRECEDENCE['UNARY'])
+            return {
+                    'type': 'unary_operator',
+                    'operator': value,
+                    'operand': operand,
+                    'line': line,
+                    'column': column}
+        elif token_type == 'OPERATOR' and value == '..':
+            # Spread operator should capture the following expression as-is so
+            # patterns like `..1..3` continue to work.
             operand = self.expression()
             return {
-                    'type': 'unary_operator', 
-                    'operator': value, 
-                    'operand': operand, 
-                    'line': line, 
+                    'type': 'unary_operator',
+                    'operator': value,
+                    'operand': operand,
+                    'line': line,
                     'column': column}
         elif token_type in {'STRING', 'RAW_STRING'}:
             return {'type': token_type.lower(), 'value': value, 'line': line, 'column': column}
