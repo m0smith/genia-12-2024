@@ -353,6 +353,11 @@ def test_interpreter_range_same(interpreter_fixture):
     code = "10..10"
     result = interpreter_fixture.run(code)
     assert list(result) == [10]
+
+def test_interpreter_negative_range(interpreter_fixture):
+    code = "-3..3"
+    result = interpreter_fixture.run(code)
+    assert list(result) == [-3, -2, -1, 0, 1, 2, 3]
     
 def test_interpreter_pattern_match_empty_list(interpreter_fixture):
     code = """

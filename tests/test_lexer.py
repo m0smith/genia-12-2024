@@ -267,6 +267,18 @@ def test_range():
     ]
     assert tokens == expected
 
+def test_negative_range_tokens():
+    code = "-10..10"
+    tokens = tokenize(code)
+
+    expected = [
+        ('OPERATOR', '-', 1, 1),
+        ('NUMBER', '10', 1, 2),
+        ('OPERATOR', '..', 1, 4),
+        ('NUMBER', '10', 1, 6),
+    ]
+    assert tokens == expected
+
 def test_end_of_list():
     code = "[first, ..rest, last]"
     tokens = tokenize(code)
