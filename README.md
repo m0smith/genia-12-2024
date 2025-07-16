@@ -2,6 +2,8 @@
 
 GENIA is a concise and dynamic scripting language designed for data processing and automation tasks. It offers dual execution modes, context-aware variables, and intuitive syntax, making it accessible for both novice and experienced programmers.
 
+See [docs/goals.md](docs/goals.md) for the project goals.
+
 ## Features
 
 - **Dual Execution Modes**: Supports Default and AWK-like modes for versatile input processing.
