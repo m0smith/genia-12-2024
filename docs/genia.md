@@ -14,7 +14,7 @@ GENIA is a dynamic, expressive scripting language designed for human-readable sy
 
 - **Dynamic Typing**: Variables are dynamically typed.
 - **Pattern Matching**: Functions and conditionals support sophisticated pattern matching.
-- **Kit Design**: Code can be organized into reusable kits.
+- **Modular Design**: Code can be organized into reusable modules.
 - **Foreign Function Interface (FFI)**: Seamlessly integrates with Python and other external libraries.
 - **Human-Centric Syntax**: Designed to be minimalistic and readable.
 - **AWK-like Processing Mode**: Simplifies line-based data processing.
@@ -91,18 +91,16 @@ repeat items -> print(item)
 
 ---
 
-### Kits
-Kits enable organized code and reusable namespaces.
+### Modules
+Modules enable organized code and reusable namespaces.
 
 Example:
 ```genia
 // math.genia
-kit math {
-    export fn square(x) -> x * x
-}
+export fn square(x) -> x * x
 
 // main.genia
-import math()
+import { square } from "math"
 print(square(4))
 ```
 
@@ -175,7 +173,7 @@ fn foreign_rem(x, y) -> foreign "math.remainder"
 ---
 
 ## Future Enhancements
-- **Remote Kits**: Import kits from URLs.
+- **Remote Modules**: Import modules from URLs.
 - **More Patterns**: Extend pattern matching to include destructuring.
 - **Native Error Handling**: More built-in error-handling constructs.
 - **Parallelism**: Erlang-inspired actor model for concurrency.
