@@ -1,11 +1,11 @@
-fn str(s) -> foreign "builtins.str"
+define str(s) -> foreign "builtins.str"
 
-fn join([])           -> "" 
+define join([])           -> "" 
     | (acc, [])       -> acc 
     | ([h, ..r])      -> join(str(h), r) 
     | (acc, [h, ..r]) -> join(acc + str(h), r)
 
-fn join-with(sep, []) -> []
+define join-with(sep, []) -> []
   | (sep, lst) -> join(interpose(sep, lst))
 
 print(join("a", [1,2,3]))

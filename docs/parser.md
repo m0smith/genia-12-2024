@@ -67,7 +67,7 @@ Before delving into the syntax, it's essential to understand the lexical element
 
 The GENIA lexer identifies the following token types:
 
-- **Keywords**: `fn`, `delay`, `foreign`
+- **Keywords**: `define`, `delay`, `foreign`
 - **Identifiers**: Names for variables, functions, etc. (e.g., `foo`, `x`, `calculate`)
 - **Operators**: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`
 - **Punctuations**: `(`, `)`, `[`, `]`, `,`, `;`, `=`, `->`, `|`, `...`
@@ -96,24 +96,24 @@ This section details the grammatical rules of the GENIA language, defining how v
 
 ### Function Definitions
 
-GENIA allows defining functions using the `fn` keyword. Functions can have multiple definitions (overloading) differentiated by parameter patterns and guards.
+GENIA allows defining functions using the `define` keyword. Functions can have multiple definitions (overloading) differentiated by parameter patterns and guards.
 
 #### Basic Function Definition
 
 ```genia
-fn functionName(parameters) -> expression;
+define functionName(parameters) -> expression;
 ```
 
 **Example:**
 
 ```genia
-fn add(x, y) -> x + y;
+define add(x, y) -> x + y;
 ```
 
 #### Function Definition with Multiple Arity and Guards
 
 ```genia
-fn functionName(parameters) when condition -> expression;
+define functionName(parameters) when condition -> expression;
 | (alternativeParameters) when alternativeCondition -> alternativeExpression;
 | (otherParameters) -> otherExpression;
 ```
@@ -121,7 +121,7 @@ fn functionName(parameters) when condition -> expression;
 **Example:**
 
 ```genia
-fn process(x) when x > 0 -> x;
+define process(x) when x > 0 -> x;
 | (x) when x < 0 -> -x;
 ```
 
@@ -201,13 +201,13 @@ GENIA supports comprehensive pattern matching in function parameters, including 
 #### List Patterns
 
 ```genia
-fn functionName([pattern1, pattern2, ..spreadPattern]) -> expression;
+define functionName([pattern1, pattern2, ..spreadPattern]) -> expression;
 ```
 
 **Example:**
 
 ```genia
-fn unpack([a, ..rest]) -> a;
+define unpack([a, ..rest]) -> a;
 ```
 
 #### Wildcard Patterns
@@ -217,7 +217,7 @@ The `_` identifier can be used as a wildcard to ignore specific elements in patt
 **Example:**
 
 ```genia
-fn ignore_second([a, _, c]) -> a + c;
+define ignore_second([a, _, c]) -> a + c;
 ```
 
 **Notes:**
@@ -237,7 +237,7 @@ GENIA allows the creation and manipulation of list data structures using square 
 **Example:**
 
 ```genia
-fn create_list() -> [1, 2, 3, ..additional];
+define create_list() -> [1, 2, 3, ..additional];
 ```
 
 **Notes:**
@@ -251,13 +251,13 @@ GENIA can integrate with external (foreign) functions seamlessly, allowing calls
 #### Foreign Function Syntax
 
 ```genia
-foreign "module.functionName" -> fn(parameters) -> expression;
+foreign "module.functionName" -> define(parameters) -> expression;
 ```
 
 **Example:**
 
 ```genia
-foreign "math.sqrt" -> fn(x) -> sqrt(x);
+foreign "math.sqrt" -> define(x) -> sqrt(x);
 ```
 
 **Notes:**
@@ -278,7 +278,7 @@ delay(expression);
 **Example:**
 
 ```genia
-fn compute() -> delay(fn(x) -> x * x);
+define compute() -> delay(define(x) -> x * x);
 ```
 
 **Notes:**
@@ -868,7 +868,7 @@ Below are several examples illustrating how GENIA code snippets are parsed into 
 **GENIA Code:**
 
 ```genia
-fn unpack([a, ..rest]) -> a;
+define unpack([a, ..rest]) -> a;
 ```
 
 **AST:**
@@ -911,7 +911,7 @@ fn unpack([a, ..rest]) -> a;
 **GENIA Code:**
 
 ```genia
-fn outer() -> (fn inner() -> 42; inner());
+define outer() -> (define inner() -> 42; inner());
 ```
 
 **AST:**
@@ -973,7 +973,7 @@ fn outer() -> (fn inner() -> 42; inner());
 **GENIA Code:**
 
 ```genia
-fn factorial(n) when n > 1 -> n * factorial(n - 1) | (n) -> 1;
+define factorial(n) when n > 1 -> n * factorial(n - 1) | (n) -> 1;
 ```
 
 **AST:**
@@ -1047,7 +1047,7 @@ fn factorial(n) when n > 1 -> n * factorial(n - 1) | (n) -> 1;
 **GENIA Code:**
 
 ```genia
-fn combine_lists(list1, list2) -> merge(...list1, ...list2);
+define combine_lists(list1, list2) -> merge(...list1, ...list2);
 ```
 
 **AST:**
@@ -1146,7 +1146,7 @@ Below is an example of how to implement a unit test for nested function definiti
 
 def test_parser_nested_function_definitions():
     code = """
-    fn outer() -> (fn inner() -> 42; inner());
+    define outer() -> (define inner() -> 42; inner());
     """
     ast = parse(code)
     

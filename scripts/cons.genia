@@ -1,13 +1,13 @@
-fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-fn cons() -> fn () -> 0;
+define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+define cons() -> define () -> 0;
 
-fn car(c) when c() > 0 -> c(1)
-fn car(c) -> c
+define car(c) when c() > 0 -> c(1)
+define car(c) -> c
 
-fn cdr(c_cdr) when c_cdr() > 0 -> c_cdr(2)
-fn cdr(c_cdr) -> c_cdr
+define cdr(c_cdr) when c_cdr() > 0 -> c_cdr(2)
+define cdr(c_cdr) -> c_cdr
 
-fn cdar(c_cadr) -> car(cdr(c_cadr))
+define cdar(c_cadr) -> car(cdr(c_cadr))
 
 c2 = cons(1,2)
 

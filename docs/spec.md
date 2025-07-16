@@ -7,7 +7,7 @@ Here’s a specification for the GENIA language incorporating the current featur
 ## Overview
 GENIA is a dynamic scripting language designed for data processing and automation. It combines simplicity with expressive power, offering features like flexible function definitions, a Foreign Function Interface (FFI), and modular organization.
 
-GENIA is intended to have has small a footprint as possible to make it possible the easily port it between host environments.  It will also be designed to be easy to learn and use, making it accessible to a wide range of users.  It should run either hosted or complied.
+GENIA is intended to have as small a footprint as possible to make it possible to easily port it between host environments.  It will also be designed to be easy to learn and use, making it accessible to a wide range of users.  It should run either hosted or compiled.
 
 ## Features
 - Dynamic typing with extensive support for identifiers, including Unicode.
@@ -59,36 +59,36 @@ name = "GENIA";
 ### Functions
 
 #### Function Definitions
-Functions are defined using the `fn` keyword. Parameters are enclosed in parentheses, and the return value follows `->`.
+Functions are defined using the `define` keyword. Parameters are enclosed in parentheses, and the return value follows `->`.
 
 ##### Native Functions
 ```genia
-fn add(x, y) -> x + y;
+define add(x, y) -> x + y;
 ```
 
 ##### Foreign Functions
 Foreign functions are defined using the `-> foreign` syntax:
 ```genia
-fn rem(x, y) -> foreign "math.remainder";
+define rem(x, y) -> foreign "math.remainder";
 ```
 
 #### Combined Functions
 Supports combining multiple functions into a single function using the `|` operator:
 ```genia
-fn compute(x, y) -> foreign "math.remainder" | (x) -> x | () -> 0
+define compute(x, y) -> foreign "math.remainder" | (x) -> x | () -> 0
 ```
 
 #### Multi-body Functions
 Functions can define multiple bodies with the `|` operator:
 ```genia
-fn fact(0) -> 1 | fact(n) -> n * fact(n - 1);
+define fact(0) -> 1 | fact(n) -> n * fact(n - 1);
 ```
 
 #### Pattern Matching
 Pattern matching is supported using constants in the arg list:
 ```genia
-fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-fn cons() -> fn () -> 0;
+define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+define cons() -> define () -> 0;
 ---
 
 ### Modules
@@ -106,7 +106,7 @@ Modules organize code into reusable namespaces.
 
 #### Examples
 ```genia
-fn example(x*, y?) -> x* + y?;
+define example(x*, y?) -> x* + y?;
 ```
 
 Lexer output:
@@ -123,7 +123,16 @@ The FFI allows GENIA to call functions from external modules, libraries, or buil
 
 #### Syntax
 ```genia
-fn rem(x, y) -> foreign "math.remainder";
+define rem(x, y) -> foreign "math.remainder";
+```
+
+The interpreter exposes a foreign function `randrange` mirroring
+Python's `random.randrange`. Using this, you can define a `randint`
+helper as:
+
+```genia
+define randint(a, b) -> randrange(a, b + 1)
+randint(1, 6)  // returns a random integer between 1 and 6
 ```
 
 - The string `"math.remainder"` is resolved into a Python callable using dynamic import:
@@ -144,9 +153,9 @@ fn rem(x, y) -> foreign "math.remainder";
 
 #### Math Utilities
 ```genia
-fn add(x, y) -> x + y;
-fn sub(x, y) -> x - y;
-fn rem(x, y) -> foreign "math.remainder";
+define add(x, y) -> x + y;
+define sub(x, y) -> x - y;
+define rem(x, y) -> foreign "math.remainder";
 
 print(add(5, 3));  // Output: 8
 print(sub(10, 4)); // Output: 6
@@ -156,8 +165,8 @@ print(rem(7, 3));  // Output: 1.0
 #### Using Modules
 ```genia
 // File: math.genia
-export fn square(x) -> x * x;
-export fn cube(x) -> x * x * x;
+export define square(x) -> x * x;
+export define cube(x) -> x * x * x;
 export const PI = 3.14159;
 
 // Main Script

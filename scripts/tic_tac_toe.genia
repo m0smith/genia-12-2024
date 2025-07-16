@@ -1,64 +1,64 @@
-fn set_board(b, i, v) -> foreign "genia.hosted.tictactoe.set_board"
-fn input(prompt) -> foreign "builtins.input"
-fn int(s) -> foreign "builtins.int"
+define set_board(b, i, v) -> foreign "genia.hosted.tictactoe.set_board"
+define input(prompt) -> foreign "builtins.input"
+define int(s) -> foreign "builtins.int"
 
 TRUE  = 1 == 1
 FALSE = 1 == 2
 
-fn equal?(x) -> fn(y) -> x == y
+define equal?(x) -> define(y) -> x == y
     | (x, y) -> x == y
-fn equal?(a,b,c) when a == b -> b == c
-fn equal?(a,b,c) -> FALSE
-fn equal?(a,b,c,d) when a == b -> equal?(b,c,d)
-fn equal?(a,b,c,d) -> FALSE
+define equal?(a,b,c) when a == b -> b == c
+define equal?(a,b,c) -> FALSE
+define equal?(a,b,c,d) when a == b -> equal?(b,c,d)
+define equal?(a,b,c,d) -> FALSE
 
-fn nequal?(x) -> fn(y) -> x != y
+define nequal?(x) -> define(y) -> x != y
 
-fn every?(pred) -> fn(list) -> every?(pred, list)
-fn every?(_, []) -> TRUE
-fn every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
-fn every?(pred, [head, ..tail]) -> FALSE
+define every?(pred) -> define(list) -> every?(pred, list)
+define every?(_, []) -> TRUE
+define every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
+define every?(pred, [head, ..tail]) -> FALSE
 
-fn any?(pred) -> fn(list) -> any?(pred, list)
-fn any?(_, []) -> FALSE
-fn any?(pred, [head, .._]) when pred(head) -> TRUE
-fn any?(pred, [head, ..tail]) -> any?(pred, tail)
+define any?(pred) -> define(list) -> any?(pred, list)
+define any?(_, []) -> FALSE
+define any?(pred, [head, .._]) when pred(head) -> TRUE
+define any?(pred, [head, ..tail]) -> any?(pred, tail)
 
-fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
-fn reduce(_, acc, []) -> acc
-fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+define reduce(f, acc) -> define(list) -> reduce(f, acc, list)
+define reduce(_, acc, []) -> acc
+define reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
-fn map(f) -> fn(lst) -> map(f, lst)
-fn map(_, []) -> []
+define map(f) -> define(lst) -> map(f, lst)
+define map(_, []) -> []
     | (f, [h, ..r]) -> [f(h), ..map(f, r)]
 
-fn map(_, [], _) -> []
+define map(_, [], _) -> []
     | (_, _, []) -> []
     | (f, [h, ..r], [h2, ..r2]) -> [f(h, h2), ..map(f, r, r2)]
 
-fn add()  -> 0
-fn add(x) -> x | (x, y) -> x + y
+define add()  -> 0
+define add(x) -> x | (x, y) -> x + y
 
 print(map(add, [1]))
 print(map(add, [1,2,3], [10,11,12]))
 
-fn constantly(v) -> fn(_) -> v 
+define constantly(v) -> define(_) -> v 
 
-fn interpose(_, [])             -> []
-fn interpose(_, [h])            -> [h]
-fn interpose(item, [hf, ..r])   -> reduce(fn(acc, el) -> [..acc, item, el], [hf], r)
+define interpose(_, [])             -> []
+define interpose(_, [h])            -> [h]
+define interpose(item, [hf, ..r])   -> reduce(define(acc, el) -> [..acc, item, el], [hf], r)
 
-fn duplicates(value, n) -> map(constantly(value), 1..n)
+define duplicates(value, n) -> map(constantly(value), 1..n)
 
-data Trio = Trio(a,b,c)
+define Trio = Trio(a,b,c)
 
-fn board_full?([.._, " ", .._]) -> FALSE | (_) -> TRUE
+define board_full?([.._, " ", .._]) -> FALSE | (_) -> TRUE
 
-fn create-board() -> duplicates(" ", 9)
+define create-board() -> duplicates(" ", 9)
 
-fn as-trio() -> 0..7
-fn as-trio(b) -> fn(n) -> as-trio(b, n)
-fn as-trio
+define as-trio() -> 0..7
+define as-trio(b) -> define(n) -> as-trio(b, n)
+define as-trio
     ([a,b,c, .._], 0) -> Trio(a,b,c) 
     | ([ _,_,_,
         a,b,c, 
@@ -82,10 +82,10 @@ fn as-trio
         _,b,_,
         _,_,c], 7)      -> Trio(a,b,c) 
 
-fn trios(board) -> map(as-trio(board), as-trio())
+define trios(board) -> map(as-trio(board), as-trio())
 
-fn printer(Trio(a, b, c)) -> print(a + "|" + b  + "|" + c)
-fn printer(board) -> 
+define printer(Trio(a, b, c)) -> print(a + "|" + b  + "|" + c)
+define printer(board) -> 
 (
     print("");
     printer(as-trio(board, 0));
@@ -95,9 +95,9 @@ fn printer(board) ->
     printer(as-trio(board, 2));
 )
 
-fn check-win(p) -> fn(t) -> check-win(t, p)
-fn check-win(Trio(a, b, c), p) -> equal?(p, a, b, c) 
-fn check-win(board, p) ->
+define check-win(p) -> define(t) -> check-win(t, p)
+define check-win(Trio(a, b, c), p) -> equal?(p, a, b, c) 
+define check-win(board, p) ->
 (
     any?(
         check-win(p), 
@@ -105,9 +105,9 @@ fn check-win(board, p) ->
 )
 board = create-board()
 
-fn switch("X") -> "O" | (_) -> "X"
+define switch("X") -> "O" | (_) -> "X"
 
-fn game*
+define game*
       (p) when check-win(board, p) 
         ->  print("Player " + p + " wins!")
 
@@ -123,7 +123,7 @@ fn game*
         game(switch(p))
     )
 
-fn game(p) -> (
+define game(p) -> (
     printer(board);
     game*(p)
 )

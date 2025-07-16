@@ -1,6 +1,6 @@
 # trace()
-# fn begin() -> c = 0
-fn end() -> print("    ", c)
+# define begin() -> c = 0
+define end() -> print("    ", c)
 
 
 print(NR, $6, $7, $9)
