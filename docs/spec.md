@@ -126,6 +126,15 @@ The FFI allows GENIA to call functions from external modules, libraries, or buil
 define rem(x, y) -> foreign "math.remainder";
 ```
 
+The interpreter exposes a foreign function `randrange` mirroring
+Python's `random.randrange`. Using this, a native `randint` function is
+defined as:
+
+```genia
+define randint(a, b) -> randrange(a, b + 1)
+randint(1, 6)  // returns a random integer between 1 and 6
+```
+
 - The string `"math.remainder"` is resolved into a Python callable using dynamic import:
   ```python
   import importlib

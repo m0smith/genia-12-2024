@@ -83,6 +83,24 @@ Run:
 echo -e "line1\nline2" | python -m genia_interpreter --awk script.genia
 ```
 
+#### Dice Rolling Example
+
+The `scripts/dice.genia` file defines a simple `roll` function. The interpreter
+exposes a foreign `randrange` function which the built-in `randint` function
+wraps for convenience.
+
+```genia
+define roll(sides) -> roll(1, sides)
+define roll(0, _) -> 0
+define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
+```
+
+Run a 2d6 roll:
+
+```bash
+python -m genia_interpreter scripts/dice.genia 2 6
+```
+
 ## Development
 
 To run tests:
