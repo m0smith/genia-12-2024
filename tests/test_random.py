@@ -1,5 +1,14 @@
 import random
+from pathlib import Path
 from genia.interpreter import GENIAInterpreter
+
+SCRIPT_PATH = Path(__file__).resolve().parent.parent / 'scripts' / 'dice.genia'
+FILE_CONTENT = SCRIPT_PATH.read_text()
+BASE_FUNCTIONS = FILE_CONTENT.split('[count, sides]')[0]
+
+def run(code: str):
+    interp = GENIAInterpreter()
+    return interp.run(BASE_FUNCTIONS + '\n' + code)
 
 
 def test_randrange_foreign_function():
@@ -12,21 +21,13 @@ def test_randrange_foreign_function():
 
 def test_randint_native_function():
     random.seed(0)
-    interp = GENIAInterpreter()
-    result = interp.run("randint(1, 6)")
+    result = run("randint(1, 6)")
     assert result == 4
 
 
 def test_roll_function():
     random.seed(0)
-    code = """
-define roll(sides) -> roll(1, sides)
-define roll(0, _) -> 0
-define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
-roll(2, 6)
-"""
-    interp = GENIAInterpreter()
-    result = interp.run(code)
+    result = run("roll(2, 6)")
     assert result == 8
 
 

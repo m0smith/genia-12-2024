@@ -1,3 +1,5 @@
+define randint(a, b) -> randrange(a, b + 1)
+
 define roll(sides) -> roll(1, sides)
 define roll(0, _) -> 0
 define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
