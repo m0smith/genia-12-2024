@@ -7,7 +7,7 @@ Here’s a specification for the GENIA language incorporating the current featur
 ## Overview
 GENIA is a dynamic scripting language designed for data processing and automation. It combines simplicity with expressive power, offering features like flexible function definitions, a Foreign Function Interface (FFI), and modular organization.
 
-GENIA is intended to have has small a footprint as possible to make it possible the easily port it between host environments.  It will also be designed to be easy to learn and use, making it accessible to a wide range of users.  It should run either hosted or complied.
+GENIA is intended to have as small a footprint as possible to make it possible to easily port it between host environments.  It will also be designed to be easy to learn and use, making it accessible to a wide range of users.  It should run either hosted or compiled.
 
 ## Features
 - Dynamic typing with extensive support for identifiers, including Unicode.
