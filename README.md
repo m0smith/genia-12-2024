@@ -104,7 +104,8 @@ python -m genia_interpreter scripts/dice.genia 2 6
 ### Anthropic MCP Service
 
 This repository also includes a small HTTP service that exposes the `roll`
-function for use with Anthropic's MCP tools. Start the service and send it a
+function for use with Anthropic's MCP tools. The request-handling logic is
+implemented in the `dice.genia` script itself. Start the service and send it a
 request as follows:
 
 ```bash

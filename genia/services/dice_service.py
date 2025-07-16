@@ -7,10 +7,24 @@ from genia.interpreter import GENIAInterpreter
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / 'scripts' / 'dice.genia'
 BASE_CODE = SCRIPT_PATH.read_text()
 
+def dict_get(d, key, default=None):
+    return d.get(key, default)
+
+def _load_interpreter():
+    interp = GENIAInterpreter()
+    interp.run(BASE_CODE, args=[])
+    return interp
+
 def roll(count: int, sides: int) -> int:
     """Roll `count` dice each with `sides` sides and return the sum."""
-    interp = GENIAInterpreter()
-    return interp.run(BASE_CODE, args=[str(count), str(sides)])
+    interp = _load_interpreter()
+    func = interp.interpreter.functions["roll"]
+    return interp.interpreter.call_function(func, [count, sides], (0, 0))
+
+def handle_request(body: str) -> str:
+    interp = _load_interpreter()
+    func = interp.interpreter.functions["handle_request"]
+    return interp.interpreter.call_function(func, [body], (0, 0))
 
 
 class DiceRequestHandler(BaseHTTPRequestHandler):
@@ -18,14 +32,11 @@ class DiceRequestHandler(BaseHTTPRequestHandler):
         length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(length).decode('utf-8')
         try:
-            data = json.loads(body)
-            count = int(data.get('count', 1))
-            sides = int(data.get('sides', 6))
-            result = roll(count, sides)
+            response = handle_request(body)
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'result': result}).encode('utf-8'))
+            self.wfile.write(response.encode('utf-8'))
         except Exception as exc:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')

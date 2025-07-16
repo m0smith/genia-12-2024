@@ -5,7 +5,21 @@ define roll(0, _) -> 0
 define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
 
 define int(s) -> foreign "builtins.int"
+define json_loads(s) -> foreign "json.loads"
+define json_dumps(o) -> foreign "json.dumps"
+define dict(pairs) -> foreign "builtins.dict"
+define getitem(obj, key) -> foreign "operator.getitem"
+define dict_get(obj, key, default) -> foreign "genia.services.dice_service.dict_get"
 
-[count, sides] = $ARGS
-print(roll(int(count), int(sides)))
+define handle_request(body) -> (
+    data = json_loads(body);
+    count = int(dict_get(data, "count", 1));
+    sides = int(dict_get(data, "sides", 6));
+    json_dumps(dict([["result", roll(count, sides)]]))
+)
+
+define main([count, sides]) -> print(roll(int(count), int(sides)))
+    | (_) -> 0
+
+main($ARGS)
 

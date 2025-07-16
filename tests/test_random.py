@@ -4,11 +4,10 @@ from genia.interpreter import GENIAInterpreter
 
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / 'scripts' / 'dice.genia'
 FILE_CONTENT = SCRIPT_PATH.read_text()
-BASE_FUNCTIONS = FILE_CONTENT.split('[count, sides]')[0]
 
 def run(code: str):
     interp = GENIAInterpreter()
-    return interp.run(BASE_FUNCTIONS + '\n' + code)
+    return interp.run(FILE_CONTENT + '\n' + code, args=[])
 
 
 def test_randrange_foreign_function():
