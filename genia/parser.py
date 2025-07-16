@@ -44,10 +44,8 @@ class Parser:
         # Peek at the first token to decide the statement type
         token_type, value, line, column = self.tokens[0]
 
-        if token_type == 'KEYWORD' and value == 'fn':
-            return self.function_definition()
-        elif token_type == 'KEYWORD' and value == 'data':
-            return self.data_definition()
+        if token_type == 'KEYWORD' and value == 'define':
+            return self.define_statement()
         elif token_type in {'IDENTIFIER', 'PUNCTUATION'}:
             # Attempt to parse a pattern
             tokens_copy = deque(self.tokens)
@@ -70,19 +68,36 @@ class Parser:
         else:
             return self.expression_statement()
 
+    def define_statement(self):
+        """Handle the unified 'define' keyword for functions and data."""
+        # Consume 'define'
+        token_type, value, line, column = self.tokens.popleft()
+        if token_type != 'KEYWORD' or value != 'define':
+            raise self.SyntaxError(f"Expected 'define' keyword at line {line}, column {column}")
+
+        if not self.tokens:
+            raise self.SyntaxError("Unexpected end of input after 'define'")
+
+        # Peek ahead to decide between function and data definition
+        if len(self.tokens) > 1 and self.tokens[0][0] == 'IDENTIFIER' and self.tokens[1][0] == 'OPERATOR' and self.tokens[1][1] == '=':
+            # Data definition
+            return self.data_definition(consumed=True)
+        else:
+            return self.function_definition(consumed=True)
+
     def function_definition(self, consumed=False):
         if not self.tokens:
             raise self.SyntaxError("Unexpected end of input")
 
-        # Consume 'fn'
+        # Consume 'define'
         if not consumed:
             token_type, value, line, column = self.tokens.popleft()
-            if token_type != 'KEYWORD' or value != 'fn':
-                raise self.SyntaxError(f"Expected 'fn' keyword at line {line}, column {column}")
+            if token_type != 'KEYWORD' or value != 'define':
+                raise self.SyntaxError(f"Expected 'define' keyword at line {line}, column {column}")
 
         # Consume function name
         if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after 'fn'")
+            raise self.SyntaxError("Unexpected end of input after 'define'")
         token_type, func_name, line, column = self.tokens.popleft()
         if token_type != 'IDENTIFIER':
             value = func_name
@@ -200,21 +215,22 @@ class Parser:
             'definitions': definitions
         }
 
-    def data_definition(self):
+    def data_definition(self, consumed=False):
         if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after 'data'")
+            raise self.SyntaxError("Unexpected end of input after 'define'")
 
-        # Consume 'data'
-        token_type, value, line, column = self.tokens.popleft()
-        if token_type != 'KEYWORD' or value != 'data':
-            raise self.SyntaxError(f"Expected 'data' keyword at line {line}, column {column}")
+        # Consume 'define'
+        if not consumed:
+            token_type, value, line, column = self.tokens.popleft()
+            if token_type != 'KEYWORD' or value != 'define':
+                raise self.SyntaxError(f"Expected 'define' keyword at line {line}, column {column}")
 
         # Expect type name
         if not self.tokens:
-            raise self.SyntaxError("Unexpected end of input after 'data'")
+            raise self.SyntaxError("Unexpected end of input after 'define'")
         token_type, type_name, line, column = self.tokens.popleft()
         if token_type != 'IDENTIFIER':
-            raise self.SyntaxError(f"Expected type name after 'data' at line {line}, column {column}")
+            raise self.SyntaxError(f"Expected type name after 'define' at line {line}, column {column}")
 
         # Expect '='
         if not self.tokens:
@@ -619,7 +635,7 @@ class Parser:
             else:
                 # Multiple statements, wrap in grouped_statements
                 return {'type': 'grouped_statements', 'statements': statements}
-        elif token_type == 'KEYWORD' and value == 'fn':
+        elif token_type == 'KEYWORD' and value == 'define':
             return self.function_definition(consumed=True)
         elif token_type == 'KEYWORD' and value == 'delay':
             return self.delay_expression()
@@ -638,7 +654,7 @@ class Parser:
         
         token_type, value, line, column = self.tokens[0]
         
-        if token_type == 'KEYWORD' and value == 'fn':
+        if token_type == 'KEYWORD' and value == 'define':
             return self.function_definition()
         elif token_type == 'IDENTIFIER':
             # Lookahead to check if it's an assignment

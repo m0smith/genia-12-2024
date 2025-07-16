@@ -173,7 +173,7 @@ Guards in Genia allow conditions to refine the applicability of a function defin
 ### **Syntax**
 
 ```genia
-fn function_name(param) when param ~ pattern -> result
+define function_name(param) when param ~ pattern -> result
 ```
 
 - **`when param ~ pattern`**: The function definition is selected only if `param` matches the regex pattern.
@@ -183,7 +183,7 @@ fn function_name(param) when param ~ pattern -> result
 #### **Guard with Regex Matching**
 
 ```genia
-fn validate(input) when input ~ r"^\d{3}-\d{3}-\d{4}$" -> true
+define validate(input) when input ~ r"^\d{3}-\d{3}-\d{4}$" -> true
          | (_) -> false;
 
 result = validate("123-456-7890")
@@ -193,7 +193,7 @@ result = validate("123-456-7890")
 #### **Multiple Guards**
 
 ```genia
-fn classify(input) when input ~ r"^\d+$" -> "All digits"
+define classify(input) when input ~ r"^\d+$" -> "All digits"
          | (input) when input ~ r"^[A-Za-z]+$" -> "All letters"
          | (_) -> "Mixed content"
 
@@ -214,14 +214,14 @@ result3 = classify("Hello123")
 1. **Invalid Regex Pattern in Guard**:
    - Throws a `RuntimeError` with a clear error message.
    ```genia
-   fn example(input) when input ~ "[A-Z" -> true
+   define example(input) when input ~ "[A-Z" -> true
    // RuntimeError: Invalid regex pattern "[A-Z"
    ```
 
 2. **Non-String Parameter**:
    - Throws a `RuntimeError` if the guarded parameter is not a string.
    ```genia
-   fn example(input) when input ~ r"^\d+$" -> true
+   define example(input) when input ~ r"^\d+$" -> true
    result = example(123)
    // RuntimeError: Regex match requires the parameter to be a string
    ```
@@ -233,7 +233,7 @@ result3 = classify("Hello123")
 ### **Regex Guards in Functions**
 
 ```genia
-fn format_date(input) when input ~ r"^\d{4}-\d{2}-\d{2}$" -> "Valid date format"
+define format_date(input) when input ~ r"^\d{4}-\d{2}-\d{2}$" -> "Valid date format"
             | (_) -> "Invalid date format";
 
 result1 = format_date("2025-01-15")
@@ -272,7 +272,7 @@ This section describes how regex can be used in guards to enhance function defin
 ## **Example Script**
 
 ```genia
-fn validate_phone(input) -> input ~ r"^\d{3}-\d{3}-\d{4}$";
+define validate_phone(input) -> input ~ r"^\d{3}-\d{3}-\d{4}$";
 
 phone = "123-456-7890"
 is_valid = validate_phone(phone)

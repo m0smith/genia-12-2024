@@ -964,7 +964,7 @@ def main():
 
     # Example GENIA code with regex matching
     code = """
-    fn foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
+    define foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
     foo("aa")
     """
     # Execute the code

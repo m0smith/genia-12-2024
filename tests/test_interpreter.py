@@ -54,7 +54,7 @@ def test_regular_mode_nf():
 def test_run_with_custom_streams(interpreter_fixture):
     import io
     code = """
-    fn test() -> print("Hello, World!")
+    define test() -> print("Hello, World!")
     test();
     """
     stdin = io.StringIO()
@@ -68,9 +68,9 @@ def test_run_with_custom_streams(interpreter_fixture):
     
 def test_multiple_arities(interpreter_fixture):
     code = """
-    fn add() -> 0;
-    fn add(a) -> a;
-    fn add(a, b) -> a + b;
+    define add() -> 0;
+    define add(a) -> a;
+    define add(a, b) -> a + b;
 
     add();
     add(5);
@@ -81,8 +81,8 @@ def test_multiple_arities(interpreter_fixture):
     
 def test_function_with_pattern_matching(interpreter_fixture):
     code = """
-    fn fact(0) -> 1;
-    fn fact(n) when n > 0 -> n * fact(n - 1);
+    define fact(0) -> 1;
+    define fact(n) when n > 0 -> n * fact(n - 1);
 
     fact(5);
     """
@@ -138,7 +138,7 @@ def test_awk_field_parsing(interpreter_fixture):
     assert stdout.getvalue().splitlines() == expected_outputs
 
 def test_interpreter_multiple_arities_direct():
-    code = "fn foo() -> 0 | (_) -> 1;"
+    code = "define foo() -> 0 | (_) -> 1;"
     
     interpreter = Interpreter()
     lexer = Lexer(code)
@@ -154,7 +154,7 @@ def test_interpreter_multiple_arities_direct():
         interpreter.functions["foo"](interpreter, [1,2], None)
 
 def test_interpreter_anonymous_multiple_arities(interpreter_fixture):
-    code = """c = fn () -> 0 | (_) -> 1
+    code = """c = define () -> 0 | (_) -> 1
     c()
     """
     
@@ -169,7 +169,7 @@ def test_interpreter_anonymous_multiple_arities(interpreter_fixture):
 
 def test_interpreter_function_with_guard_bad_condition(interpreter_fixture):
     code = """
-    fn foo(x) when x > 10 -> x * 2;
+    define foo(x) when x > 10 -> x * 2;
     foo(5);
     foo(15);
     """
@@ -178,7 +178,7 @@ def test_interpreter_function_with_guard_bad_condition(interpreter_fixture):
         
 def test_interpreter_function_with_guard(interpreter_fixture):
     code = """
-    fn foo(x) when x > 10 -> x * 2;
+    define foo(x) when x > 10 -> x * 2;
 
     foo(15);
     """
@@ -188,7 +188,7 @@ def test_interpreter_function_with_guard(interpreter_fixture):
 
 def test_interpreter_multiple_guards(interpreter_fixture):
     code = """
-    fn foo(x) when x > 10 -> x * 2
+    define foo(x) when x > 10 -> x * 2
         | (x) when x < 5 -> x + 2;
 
     foo(3);
@@ -200,17 +200,17 @@ def test_interpreter_multiple_guards(interpreter_fixture):
 def test_interpreter_cons_list_reduce(interpreter_fixture):
     code = """
     trace()
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-    fn cons() -> fn() -> 0;
-    fn list(a, b, c) -> cons(a, cons(b, cons(c, cons())))
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+    define cons() -> define() -> 0;
+    define list(a, b, c) -> cons(a, cons(b, cons(c, cons())))
     
-    fn car(cc) when cc() > 0 -> cc(1)
-    fn cdr(cd) when cd() > 0 -> cd(2)
+    define car(cc) when cc() > 0 -> cc(1)
+    define cdr(cd) when cd() > 0 -> cd(2)
     
-    fn reduce(func, accxx, lst1) when lst1() > 0 -> reduce(func, func(accxx, car(lst1)), cdr(lst1))
-    fn reduce(func, accx, lst2) -> accx
+    define reduce(func, accxx, lst1) when lst1() > 0 -> reduce(func, func(accxx, car(lst1)), cdr(lst1))
+    define reduce(func, accx, lst2) -> accx
     
-    fn add() -> 0 | (x,y) -> x + y
+    define add() -> 0 | (x,y) -> x + y
     
     lst = list(12,8,4)
     printenv()
@@ -221,7 +221,7 @@ def test_interpreter_cons_list_reduce(interpreter_fixture):
 
 def test_interpreter_adder(interpreter_fixture):
     code = """
-    fn add(x) -> fn (y) -> x  + y;
+    define add(x) -> define (y) -> x  + y;
     inc = add(1)
     inc(42)
     """
@@ -230,8 +230,8 @@ def test_interpreter_adder(interpreter_fixture):
 
 def test_interpreter_recursive(interpreter_fixture):
     code = """
-    fn first(x) -> x
-    fn first(a, b) -> first(a)
+    define first(x) -> x
+    define first(a, b) -> first(a)
     first(5,7)
     """
     result = interpreter_fixture.run(code)
@@ -240,11 +240,11 @@ def test_interpreter_recursive(interpreter_fixture):
 
 def test_interpreter_recursive_tail_call(interpreter_fixture):
     code = """
-    fn reduce(_, acc, [])          -> acc
+    define reduce(_, acc, [])          -> acc
         |    (f, [head, ..tail])   -> reduce(f, head, tail)
         |    (f, acc, [h, ..tail]) -> reduce(f, f(acc, h), tail)
    
-    fn add (x,y) -> x + y
+    define add (x,y) -> x + y
     
     c = [42,99, 10, 2, -12]
     reduce(add, c)
@@ -254,12 +254,12 @@ def test_interpreter_recursive_tail_call(interpreter_fixture):
 
 def test_interpreter_compose(interpreter_fixture):
     code = """
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-    fn cons() -> fn() -> 0
-    fn car(ca) when ca() > 0 -> ca(1)
-    fn cdr(cd) when cd() > 0 -> cd(2)
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+    define cons() -> define() -> 0
+    define car(ca) when ca() > 0 -> ca(1)
+    define cdr(cd) when cd() > 0 -> cd(2)
     
-    fn compose(f,g) -> fn (x) -> f(g(x))
+    define compose(f,g) -> define (x) -> f(g(x))
     
     cdar = compose(car, cdr)
     cddr = compose(cdr, cdr)
@@ -274,7 +274,7 @@ def test_interpreter_compose(interpreter_fixture):
 
 def test_interpreter_cons_flag(interpreter_fixture):
     code = """
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
     c = cons(1,2)
     c()
     
@@ -284,8 +284,8 @@ def test_interpreter_cons_flag(interpreter_fixture):
 
 def test_interpreter_cons_v1(interpreter_fixture):
     code = """
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-    fn cons() -> fn() -> 0
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+    define cons() -> define() -> 0
     c = cons(42,99)
     c(1)
     
@@ -295,8 +295,8 @@ def test_interpreter_cons_v1(interpreter_fixture):
 
 def test_interpreter_cons_v2(interpreter_fixture):
     code = """
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-    fn cons() -> fn() -> 0
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+    define cons() -> define() -> 0
     c = cons(42,99)
     c(2)
     
@@ -306,8 +306,8 @@ def test_interpreter_cons_v2(interpreter_fixture):
 
 def test_interpreter_cons__2_element_list__first(interpreter_fixture):
     code = """
-    fn cons(a, b) -> fn () -> 1 | (1) -> a | (2) -> b;
-    fn cons() -> fn() -> 0
+    define cons(a, b) -> define () -> 1 | (1) -> a | (2) -> b;
+    define cons() -> define() -> 0
     
     c = cons(42, cons(99, cons()))
     c(1)
@@ -319,10 +319,10 @@ def test_interpreter_cons__2_element_list__first(interpreter_fixture):
 def test_interpreter_cons__2_element_list__second(interpreter_fixture):
     code = """
     trace()
-    fn cons(a, b) -> (fn () -> 1 
+    define cons(a, b) -> (define () -> 1 
                        | (1) -> a 
                        | (2) -> b)
-    fn cons() -> fn() -> 0 | (1) -> null | (2) -> null;
+    define cons() -> define() -> 0 | (1) -> null | (2) -> null;
     
     c = cons(42, cons(99, cons()))
     c2 = c(2)
@@ -334,7 +334,7 @@ def test_interpreter_cons__2_element_list__second(interpreter_fixture):
 
 def test_interpreter___ffi_rem(interpreter_fixture):
     code = """
-    fn rem(x,y) -> foreign "math.remainder"
+    define rem(x,y) -> foreign "math.remainder"
     rem(10,3)
     """
     result = interpreter_fixture.run(code)
@@ -342,7 +342,7 @@ def test_interpreter___ffi_rem(interpreter_fixture):
 
 def test_interpreter___ffi_rem2(interpreter_fixture):
     code = """
-    fn rem
+    define rem
         (x,y) -> foreign "math.remainder" 
       | (x) -> (x) 
       | () -> 0
@@ -373,7 +373,7 @@ def test_interpreter_negative_range(interpreter_fixture):
     
 def test_interpreter_pattern_match_empty_list(interpreter_fixture):
     code = """
-        fn foo([]) -> 0 | ([a, ..r]) -> a
+        define foo([]) -> 0 | ([a, ..r]) -> a
         foo([])
         """
     result = interpreter_fixture.run(code)
@@ -381,7 +381,7 @@ def test_interpreter_pattern_match_empty_list(interpreter_fixture):
     
 def test_interpreter_pattern_match_list_1_element(interpreter_fixture):
     code = """
-        fn foo([]) -> 0 | ([a, ..r]) -> a
+        define foo([]) -> 0 | ([a, ..r]) -> a
         foo([1])
         """
     result = interpreter_fixture.run(code)
@@ -389,7 +389,7 @@ def test_interpreter_pattern_match_list_1_element(interpreter_fixture):
 
 def test_interpreter_pattern_match_list_2_element(interpreter_fixture):
     code = """
-        fn foo([]) -> 0 | ([a, ..r]) -> a
+        define foo([]) -> 0 | ([a, ..r]) -> a
         foo([29, 31])
         """
     result = interpreter_fixture.run(code)
@@ -397,7 +397,7 @@ def test_interpreter_pattern_match_list_2_element(interpreter_fixture):
     
 def test_interpreter_pattern_match_count_list(interpreter_fixture):
     code = """
-        fn count  ([])       -> 0 
+        define count  ([])       -> 0 
            |      ([a, ..r]) -> 1 + count(r)
         count(100..1)
         """
@@ -406,7 +406,7 @@ def test_interpreter_pattern_match_count_list(interpreter_fixture):
     
 def test_interpreter_pattern_match_count_list_tco(interpreter_fixture):
     code = """
-        fn count  ([])            -> 0  
+        define count  ([])            -> 0  
            |      ([a, ..r])      -> count(1, r)
            |      (acc, [a, ..r]) -> count(1 + acc, r)
            |      (acc, [])       -> acc
@@ -427,7 +427,7 @@ def test_interpreter_pattern_assignment(interpreter_fixture):
 
 def test_interpreter_return_empty_list(interpreter_fixture):
     code = """
-        fn foo() -> []
+        define foo() -> []
         foo()
         """
     result = interpreter_fixture.run(code)
@@ -435,7 +435,7 @@ def test_interpreter_return_empty_list(interpreter_fixture):
 
 def test_interpreter_return_list(interpreter_fixture):
     code = """
-        fn foo(a,b,c) -> [a,b,c]
+        define foo(a,b,c) -> [a,b,c]
         foo(1,2,3)
         """
     result = interpreter_fixture.run(code)
@@ -443,7 +443,7 @@ def test_interpreter_return_list(interpreter_fixture):
 
 def test_interpreter_return_rest(interpreter_fixture):
     code = """
-        fn foo([_, ..r1]) -> r1
+        define foo([_, ..r1]) -> r1
         foo(2..5)
         """
     print(f"AST {ast(code)}")
@@ -452,7 +452,7 @@ def test_interpreter_return_rest(interpreter_fixture):
     
 def test_interpreter_return_rest2(interpreter_fixture):
     code = """
-        fn foo([_, _, ..r1]) -> r1
+        define foo([_, _, ..r1]) -> r1
         foo(2..5)
         """
     result = interpreter_fixture.run(code)
@@ -460,7 +460,7 @@ def test_interpreter_return_rest2(interpreter_fixture):
     
 def test_interpreter_return_rest_expanded(interpreter_fixture):
     code = """
-        fn foo([_, ..r]) -> [99, ..r]
+        define foo([_, ..r]) -> [99, ..r]
         foo(10..14)
         """
     result = interpreter_fixture.run(code)
@@ -468,9 +468,9 @@ def test_interpreter_return_rest_expanded(interpreter_fixture):
 
 def test_interpreter_map(interpreter_fixture):
     code = """
-        fn map(_, []) -> []
-        fn map(f, [first, ..rest]) -> [f(first), ..map(f, rest)]
-        fn double(x) -> x + x
+        define map(_, []) -> []
+        define map(f, [first, ..rest]) -> [f(first), ..map(f, rest)]
+        define double(x) -> x + x
         map(double, 1..10)
         """
     result = interpreter_fixture.run(code)
@@ -528,7 +528,7 @@ def test_eval_mixed_strings(interpreter_fixture):
 
 def test_regex(interpreter_fixture):
     code = """
-        fn foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
+        define foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
         foo("aa")
     """
     results = interpreter_fixture.run(code)
@@ -538,8 +538,8 @@ def test_list_pattern_contains_literal(interpreter_fixture):
     code = """
         TRUE  = 1 == 1
         FALSE = 1 == 2
-        fn the_answer([..pre, 1, ..post]) -> TRUE
-        fn the_answer(_) -> FALSE
+        define the_answer([..pre, 1, ..post]) -> TRUE
+        define the_answer(_) -> FALSE
         the_answer([0,1,2,3])
     """
     result = interpreter_fixture.run(code)
@@ -549,9 +549,9 @@ def test_list_pattern_contains_constructor(interpreter_fixture):
     code = """
         TRUE  = 1 == 1
         FALSE = 1 == 2
-        data Trio = Trio(a,b,c)
-        fn the_answer([..pre, Trio(1,_,_), ..post]) -> TRUE
-        fn the_answer(_) -> FALSE
+        define Trio = Trio(a,b,c)
+        define the_answer([..pre, Trio(1,_,_), ..post]) -> TRUE
+        define the_answer(_) -> FALSE
         the_answer([Trio(0,0,0), Trio(1,2,3)])
     """
     result = interpreter_fixture.run(code)
@@ -614,8 +614,8 @@ def test_lazy_seq_count(interpreter_fixture):
     code = """
     ls = lazyseq([1,2,3])
     
-    fn count([]) -> 0
-    fn count([_, ..tail]) -> 1 + count(tail) 
+    define count([]) -> 0
+    define count([_, ..tail]) -> 1 + count(tail) 
     
     count(ls)
     """
@@ -626,10 +626,10 @@ def test_iterseq_count(interpreter_fixture):
     code = """
     f = find_files("scripts")
    
-    fn count([])                -> 0
-    fn count([_, ..tail])       -> count(1, tail)
-    fn count(acc, [])           -> acc
-    fn count(acc, [_, ..tail])  -> count(acc + 1, tail)
+    define count([])                -> 0
+    define count([_, ..tail])       -> count(1, tail)
+    define count(acc, [])           -> acc
+    define count(acc, [_, ..tail])  -> count(acc + 1, tail)
     
     count(f)
     count(f)
@@ -641,8 +641,8 @@ def test_iterseq_count(interpreter_fixture):
 @pytest.mark.skip   
 def test_delayseq_count(interpreter_fixture):
     code = """
-    fn iterate(f, v) -> delayseq(v, delay(iterate(f, f(v))))
-    [a,b,c,d] = iterate(fn(i) -> i + 1, 1)
+    define iterate(f, v) -> delayseq(v, delay(iterate(f, f(v))))
+    [a,b,c,d] = iterate(define(i) -> i + 1, 1)
     d
     """
     result = interpreter_fixture.run(code)

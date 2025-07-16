@@ -11,14 +11,14 @@ def test_board_full_without_ffi():
     TRUE  = 1 == 1
     FALSE = 1 == 2
 
-    fn equal?(x) -> fn(y) -> x == y | (x, y) -> x == y
+    define equal?(x) -> define(y) -> x == y | (x, y) -> x == y
 
-    fn every?(pred) -> fn(list) -> every?(pred, list)
-    fn every?(_, []) -> TRUE
-    fn every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
-    fn every?(pred, [head, ..tail]) -> FALSE
+    define every?(pred) -> define(list) -> every?(pred, list)
+    define every?(_, []) -> TRUE
+    define every?(pred, [head, ..tail]) when pred(head) -> every?(pred, tail)
+    define every?(pred, [head, ..tail]) -> FALSE
 
-    fn board_full(b) -> every?(fn(x) -> x != " ", b)
+    define board_full(b) -> every?(define(x) -> x != " ", b)
     board_full(["X","O","X","O","X","O","X","O","X"])
     """
     interp = GENIAInterpreter()
@@ -27,11 +27,11 @@ def test_board_full_without_ffi():
 
 def test_duplicate_with_reduce():
     code = """
-    fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
-    fn reduce(_, acc, []) -> acc
-    fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+    define reduce(f, acc) -> define(list) -> reduce(f, acc, list)
+    define reduce(_, acc, []) -> acc
+    define reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
-    fn duplicates(v, n) -> reduce(fn(acc, _) -> [..acc, v], [], 1..n)
+    define duplicates(v, n) -> reduce(define(acc, _) -> [..acc, v], [], 1..n)
     duplicates(5, 3)
     """
     interp = GENIAInterpreter()
@@ -39,7 +39,7 @@ def test_duplicate_with_reduce():
 
 def test_string_pattern_matching():
     code = """
-    fn switch("X") -> "O" | (_) -> "X"
+    define switch("X") -> "O" | (_) -> "X"
     switch("X")
     """
     interp = GENIAInterpreter()
@@ -54,7 +54,7 @@ def test_simple_assigment():
     
 def test_local_assigment():
     code = """
-    fn f() -> (x = 2)
+    define f() -> (x = 2)
     f()
     """
     interp = GENIAInterpreter()

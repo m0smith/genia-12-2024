@@ -1,14 +1,14 @@
-fn apply(f, []) -> f()
-fn apply(f, [a]) -> f(a)
-fn apply(f, [a, b]) -> f(a, b)
-fn apply(f, [a, b, c]) -> f(a, b, c)
-fn apply(f, [a, b, c, d, ..r]) -> f(a, b, c, d)
+define apply(f, []) -> f()
+define apply(f, [a]) -> f(a)
+define apply(f, [a, b]) -> f(a, b)
+define apply(f, [a, b, c]) -> f(a, b, c)
+define apply(f, [a, b, c, d, ..r]) -> f(a, b, c, d)
 
-fn add(a,b,c,d) -> a + b + c + d
-fn add(a,b,c) -> a + b + c
-fn add(a,b) -> a + b
-fn add(a) -> a
-fn add() -> 0
+define add(a,b,c,d) -> a + b + c + d
+define add(a,b,c) -> a + b + c
+define add(a,b) -> a + b
+define add(a) -> a
+define add() -> 0
 
 
 print(apply(add, [1,2,3, 5]))
