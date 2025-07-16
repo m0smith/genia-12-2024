@@ -8,6 +8,11 @@ FILE_CONTENT = SCRIPT_PATH.read_text()
 def run(code: str):
     interp = GENIAInterpreter()
     return interp.run(FILE_CONTENT + '\n' + code, args=[])
+BASE_FUNCTIONS = FILE_CONTENT.split('[count, sides]')[0]
+
+def runOLD(code: str):
+    interp = GENIAInterpreter()
+    return interp.run(BASE_FUNCTIONS + '\n' + code)
 
 
 def test_randrange_foreign_function():
