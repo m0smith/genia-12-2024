@@ -149,7 +149,7 @@ def test_custom_function_call():
 
 
 def test_multi_arity_function_definition():
-    code = """fn add() -> 0
+    code = """define add() -> 0
 | (a) -> a
 | (a, b) -> a + b
 """
@@ -200,7 +200,7 @@ def test_multi_arity_function_definition():
 
 
 def test_function_with_guard():
-    code = "fn fact(n) when n > 1 -> n * fact(n - 1)"
+    code = "define fact(n) when n > 1 -> n * fact(n - 1)"
     lexer = Lexer(code)
     tokens = lexer.tokenize()
 
@@ -247,7 +247,7 @@ def test_function_with_guard():
 
 
 def test_multi_arity_with_guards():
-    code = """fn foo(x) when x > 10 -> x
+    code = """define foo(x) when x > 10 -> x
 | (x) when x < 5 -> x + 1
 """
     lexer = Lexer(code)
@@ -296,7 +296,7 @@ def test_multi_arity_with_guards():
 
 
 def test_ffi_simple():
-    code = 'fn rem(x,y) -> foreign "math.remainder"'
+    code = 'define rem(x,y) -> foreign "math.remainder"'
     lexer = Lexer(code)
     tokens = lexer.tokenize()
     parser = Parser(tokens)
@@ -436,7 +436,7 @@ start..end
 
 
 def test_parser_list_pattern_ast():
-    code = "fn foo([_, ..r]) -> [99, ..r]"
+    code = "define foo([_, ..r]) -> [99, ..r]"
     ast = parse(code)
     expected_ast = [
         {
@@ -471,7 +471,7 @@ def test_parser_list_pattern_ast():
 
 
 def test_parser_grouped_expression():
-    code = "fn foo() -> (a + b);"
+    code = "define foo() -> (a + b);"
     ast = parse(code)
 
     expected_ast = [
@@ -503,7 +503,7 @@ def test_parser_grouped_expression():
 
 
 def test_parser_grouped_statements():
-    code = "fn bar() -> (a = 1; b = 2; a + b);"
+    code = "define bar() -> (a = 1; b = 2; a + b);"
     ast = parse(code)
 
     expected_ast = [
@@ -675,7 +675,7 @@ def test_parser_nested_delay():
 
 
 def test_parser_delay_in_function_call():
-    code = "fn compute() -> delay(expensive_computation())"
+    code = "define compute() -> delay(expensive_computation())"
     ast = parse(code)
     expected_ast = [
         {
@@ -710,7 +710,7 @@ def test_parser_delay_in_function_call():
 
 
 def test_parser_named_function_with_literal():
-    code = "fn fact(0) -> 1;"
+    code = "define fact(0) -> 1;"
     lexer = Lexer(code)
     tokens = list(lexer.tokenize())
     parser = Parser(tokens)
@@ -737,7 +737,7 @@ def test_parser_named_function_with_literal():
 
 
 def test_parser_anonymous_function():
-    code = "fn (y) -> y + 1;"
+    code = "define (y) -> y + 1;"
     lexer = Lexer(code)
     tokens = list(lexer.tokenize())
     parser = Parser(tokens)
@@ -775,11 +775,11 @@ def test_parser_multiple_spread_operators():
     Test parsing of a function definition with multiple spread operators in list patterns.
 
     Function Definition:
-        fn process([..a, ..b]) -> [..a, ..b]
+        define process([..a, ..b]) -> [..a, ..b]
 
 
     """
-    code = "fn process([..a, ..b]) -> [..a, ..b]"
+    code = "define process([..a, ..b]) -> [..a, ..b]"
     ast = parse(code)
 
     expected_ast = [
@@ -789,7 +789,7 @@ def test_parser_multiple_spread_operators():
     assert strip_metadata(ast) == strip_metadata(
         expected_ast), f"Expected AST does not match actual AST.\nExpected: {expected_ast}\nActual: {ast}"
 def test_tail_call():
-    code = "fn fact_tail(n) when n > 1 -> fact_tail(n - 1)"
+    code = "define fact_tail(n) when n > 1 -> fact_tail(n - 1)"
     lexer = Lexer(code)
     tokens = lexer.tokenize()
 

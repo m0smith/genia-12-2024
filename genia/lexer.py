@@ -20,7 +20,7 @@ class Lexer:
         ('OPERATOR', r'\.\.|[+\-*/%=~]'),                            # +, -, *, /, %, =, ~
         ('PUNCTUATION', r'[()\[\]{},;|]'),                       # Punctuation
         ('NUMBER', r'\d+'),                                     # Integer numbers
-        ('KEYWORD', r'\bfn\b|\bdelay\b|\bforeign\b|\bwhen\b|\bdata\b'),  # Keywords
+        ('KEYWORD', r'\bdefine\b|\bdelay\b|\bforeign\b|\bwhen\b'),  # Keywords
         ('IDENTIFIER', r'\$?[\w*+\-/?]+'),                      # Identifiers with *, +, -, /, ?
         ('MISMATCH', r'.'),                                      # Any other character
     ]
@@ -48,7 +48,7 @@ class Lexer:
                 continue
             elif kind == 'WHITESPACE' or kind == 'COMMENT':
                 continue
-            elif kind == 'IDENTIFIER' and value in ['fn', 'delay', 'foreign', 'when']:
+            elif kind == 'IDENTIFIER' and value in ['define', 'delay', 'foreign', 'when']:
                 kind = 'KEYWORD'
             elif kind == 'MISMATCH':
                 raise self.SyntaxError(f"Unexpected character '{value}' at line {line_num}, column {column}")

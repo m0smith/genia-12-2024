@@ -1,4 +1,4 @@
-fn body
+define body
     () when NR == 1             -> NR 
   | () when NR == 19            -> NR 
   | () when $7 ~ r"^[0-9]+$"    -> NR

@@ -76,7 +76,7 @@ Reserved words that have special meaning in GENIA's syntax and cannot be used as
 
 **List of Keywords:**
 
-- `fn`
+- `define`
 - `delay`
 - `foreign`
 
@@ -365,7 +365,7 @@ Below is a summary of all token patterns used by the GENIA Lexer:
 | **PUNCTUATION**          | `[()\[\]{},;]`                                                                                      | Parentheses, brackets, braces, commas, semicolons         |
 | **NUMBER**               | `\d+`                                                                                                | Integer numbers                                          |
 | **IDENTIFIER**           | `\$?[\w*+\-/?]+`                                                                                     | Identifiers with optional `$` and special characters      |
-| **KEYWORD**              | `\bfn\b|\bdelay\b|\bforeign\b`                                                                       | Reserved keywords                                        |
+| **KEYWORD**              | `\bdefine\b|\bdelay\b|\bforeign\b`                                                                       | Reserved keywords                                        |
 | **MISMATCH**             | `.`                                                                                                  | Any other character; triggers a syntax error             |
 
 ---
@@ -460,12 +460,12 @@ Accurate tracking of line and column numbers is vital for:
 Given the code:
 
 ```genia
-fn add(a, b) ->
+define add(a, b) ->
   a + b;
 ```
 
-- **First Line (`fn add(a, b) ->`):**
-  - `fn` at line `1`, column `1`.
+- **First Line (`define add(a, b) ->`):**
+  - `define` at line `1`, column `1`.
   - `add` at line `1`, column `4`.
   
 - **Second Line (`  a + b;`):**
@@ -490,10 +490,10 @@ Proper error handling ensures that the lexer can gracefully handle unexpected or
 Given the code:
 
 ```genia
-fn invalid @
+define invalid @
 ```
 
-- The lexer recognizes `fn` and `invalid` as valid tokens.
+- The lexer recognizes `define` and `invalid` as valid tokens.
 - The `@` character does not match any token patterns, resulting in a `SyntaxError`:
 
 ```
@@ -575,14 +575,14 @@ r"[A-Z]+\n" "regular\nstring"
 **Code:**
 
 ```genia
-fn foo() -> 0 | (_) -> 1
+define foo() -> 0 | (_) -> 1
 ```
 
 **Tokenization:**
 
 | Token Type     | Value   | Line | Column |
 |----------------|---------|------|--------|
-| KEYWORD        | `fn`    | 1    | 1      |
+| KEYWORD        | `define`    | 1    | 1      |
 | IDENTIFIER     | `foo`   | 1    | 4      |
 | PUNCTUATION    | `(`     | 1    | 7      |
 | PUNCTUATION    | `)`     | 1    | 8      |
@@ -598,8 +598,8 @@ fn foo() -> 0 | (_) -> 1
 
 **Explanation:**
 
-- **Function Definition (`fn foo() -> 0`):**
-  - `fn` is a keyword.
+- **Function Definition (`define foo() -> 0`):**
+  - `define` is a keyword.
   - `foo` is an identifier.
   - `()` denotes an empty parameter list.
   - `->` represents the arrow operator.
@@ -700,7 +700,7 @@ class Lexer:
                 continue
             elif kind in ('WHITESPACE', 'COMMENT'):
                 continue
-            elif kind == 'IDENTIFIER' and value in ['fn', 'delay', 'foreign']:
+            elif kind == 'IDENTIFIER' and value in ['define', 'delay', 'foreign']:
                 kind = 'KEYWORD'
             elif kind == 'MISMATCH':
                 raise self.SyntaxError(f"Unexpected character '{value}' at line {line_num}, column {column}")
@@ -755,7 +755,7 @@ Below is the comprehensive list of tokens recognized by the GENIA Lexer, along w
 | **PUNCTUATION**| `[()\[\]{},;]`                                                                                      | Parentheses, brackets, braces, commas, semicolons         |
 | **NUMBER**     | `\d+`                                                                                                | Integer numbers                                          |
 | **IDENTIFIER** | `\$?[\w*+\-/?]+`                                                                                     | Identifiers with optional `$` and special characters      |
-| **KEYWORD**    | `\bfn\b|\bdelay\b|\bforeign\b`                                                                       | Reserved keywords                                        |
+| **KEYWORD**    | `\bdefine\b|\bdelay\b|\bforeign\b`                                                                       | Reserved keywords                                        |
 | **MISMATCH**   | `.`                                                                                                  | Any other character; triggers a syntax error             |
 
 ### **6.2. Regex Patterns**
@@ -903,11 +903,11 @@ r"([^"\\]|\\.)*?" | r'([^\'\\]|\\.)*?'
 #### **6.2.14. KEYWORD**
 
 ```regex
-\bfn\b|\bdelay\b|\bforeign\b
+\bdefine\b|\bdelay\b|\bforeign\b
 ```
 
 - **Explanation:**
-  - Matches exact words `fn`, `delay`, or `foreign` using word boundaries (`\b`).
+  - Matches exact words `define`, `delay`, or `foreign` using word boundaries (`\b`).
 
 #### **6.2.15. MISMATCH**
 

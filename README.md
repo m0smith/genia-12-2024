@@ -66,13 +66,13 @@ python -m genia_interpreter script.genia 1 2 3
 #### AWK Mode Example
 
 ```genia
-fn before() {
+define before() {
     lineCount = 0;
 }
 
 lineCount = lineCount + 1;
 
-fn after() {
+define after() {
     print("Total lines: " + lineCount);
 }
 ```

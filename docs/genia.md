@@ -52,20 +52,20 @@ Functions can be defined natively or as foreign functions.
 
 Example:
 ```genia
-fn add(x, y) -> x + y
-fn foreign_rem(x, y) -> foreign "math.remainder"
+define add(x, y) -> x + y
+define foreign_rem(x, y) -> foreign "math.remainder"
 ```
 
 #### Multi-body Functions
 Functions support multiple bodies and guards:
 ```genia
-fn fact(0) -> 1 | fact(n) -> n * fact(n - 1)
+define fact(0) -> 1 | fact(n) -> n * fact(n - 1)
 ```
 
 #### Optional Syntax
 Parentheses and commas are optional in definitions:
 ```genia
-fn greet name -> "Hello, " + name
+define greet name -> "Hello, " + name
 ```
 
 ---
@@ -97,7 +97,7 @@ Modules enable organized code and reusable namespaces.
 Example:
 ```genia
 // math.genia
-export fn square(x) -> x * x
+export define square(x) -> x * x
 
 // main.genia
 import { square } from "math"
@@ -107,15 +107,15 @@ print(square(4))
 ---
 
 ### Algebraic Data Types
-GENIA supports simple tagged unions using the `data` keyword. Constructors are
+GENIA supports simple tagged unions using the `define` keyword. Constructors are
 regular functions that build structured values which can be decomposed through
 pattern matching.
 
 Example:
 ```genia
-data Trio = Trio(a, b, c)
+define Trio = Trio(a, b, c)
 
-fn first(Trio(x, _, _)) -> x
+define first(Trio(x, _, _)) -> x
 first(Trio(1, 2, 3))
 ```
 
@@ -141,7 +141,7 @@ decide after() { print("Processed " + lineCount + " lines.") }
 ### Error Handling
 Supports Erlang-style restarts:
 ```genia
-retry(fn, max_attempts=3, backoff=exponential)
+retry(define, max_attempts=3, backoff=exponential)
 ```
 
 ---
@@ -151,7 +151,7 @@ retry(fn, max_attempts=3, backoff=exponential)
 ### Lexer
 - Supports Unicode and special characters like `*` and `?`.
 - Tokens:
-  - Keywords: `fn`, `foreign`, `when`
+  - Keywords: `define`, `foreign`, `when`
   - Operators: `+`, `-`, `*`, `/`, `=`, etc.
   - Punctuation: `(`, `)`, `{`, `}`, `,`, `;`
 
@@ -167,7 +167,7 @@ retry(fn, max_attempts=3, backoff=exponential)
 - Links GENIA functions to external Python functions.
 - Example:
 ```genia
-fn foreign_rem(x, y) -> foreign "math.remainder"
+define foreign_rem(x, y) -> foreign "math.remainder"
 ```
 
 ---

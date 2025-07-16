@@ -219,7 +219,7 @@ Environment after evaluation:
 
 1. **Pattern Matching in Function Parameters**:
    ```genia
-   fn sum([first, ..rest]) -> first + sum(rest) | [] -> 0
+   define sum([first, ..rest]) -> first + sum(rest) | [] -> 0
    ```
 
 2. **Destructuring with Defaults**:

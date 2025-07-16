@@ -1,8 +1,8 @@
-fn begin()  -> print("Starting AWK mode")
+define begin()  -> print("Starting AWK mode")
 
-fn end()    -> print("Processed " , NR , " lines")
+define end()    -> print("Processed " , NR , " lines")
 
-fn body() when NR == 1  -> print("Skipping Header")
+define body() when NR == 1  -> print("Skipping Header")
     |  ()               -> (
                             print("Line " , NR , " has " , NF , " fields");
                             t = t + $2

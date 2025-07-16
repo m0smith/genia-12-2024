@@ -2,34 +2,34 @@ TRUE = 1 == 1
 FALSE = 1 == 2
 
 
-fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
-fn reduce(_, acc, []) -> acc
-fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+define reduce(f, acc) -> define(list) -> reduce(f, acc, list)
+define reduce(_, acc, []) -> acc
+define reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
-fn count([]) -> 0
-fn count(list) -> reduce(fn (acc, _) -> acc + 1, 0, list)
+define count([]) -> 0
+define count(list) -> reduce(define (acc, _) -> acc + 1, 0, list)
 
-fn filter(f) -> fn(list) -> filter(f, list)
-fn filter(_, []) -> []
-fn filter(pred, list) -> reduce(fn (acc, el) when pred(el) -> [..acc, el] | (acc, _) -> acc, [], list)
-fn not(v) when v -> FALSE | (_) -> TRUE
+define filter(f) -> define(list) -> filter(f, list)
+define filter(_, []) -> []
+define filter(pred, list) -> reduce(define (acc, el) when pred(el) -> [..acc, el] | (acc, _) -> acc, [], list)
+define not(v) when v -> FALSE | (_) -> TRUE
 
-fn grep (regex)                 -> (fn(list)    -> grep(regex, TRUE, list))
-    |   (regex, rtnval)         -> (fn(list)    -> grep(regex, rtnval, list))
+define grep (regex)                 -> (define(list)    -> grep(regex, TRUE, list))
+    |   (regex, rtnval)         -> (define(list)    -> grep(regex, rtnval, list))
     |   (regex, rtnval, seq)    ->  
             filter(
-                fn (el) when el ~ regex     -> rtnval 
+                define (el) when el ~ regex     -> rtnval 
                     | (_)                   -> not(rtnval),
                 seq)
 
 
 
 
-fn rcompose () -> (fn(x) -> x) 
-    | (f) -> (fn(x) -> f(x))
-    | (f, g) -> (fn(x) -> g(f(x)))
-    | (f, g, h) -> (fn(x) -> h(g(f(x))))
-    | (f, g, h, i) -> (fn(x) -> i(h(g(f(x)))))
+define rcompose () -> (define(x) -> x) 
+    | (f) -> (define(x) -> f(x))
+    | (f, g) -> (define(x) -> g(f(x)))
+    | (f, g, h) -> (define(x) -> h(g(f(x))))
+    | (f, g, h, i) -> (define(x) -> i(h(g(f(x)))))
 
 f = find_files(".")
 count(f)
