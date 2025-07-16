@@ -50,10 +50,6 @@ fn interpose(item, [hf, ..r])   -> reduce(fn(acc, el) -> [..acc, item, el], [hf]
 
 fn duplicates(value, n) -> map(constantly(value), 1..n)
 
-data Player = X | Y
-
-data Pos = Player | A(label)
-
 data Trio = Trio(a,b,c)
 
 fn board_full?([.._, " ", .._]) -> FALSE | (_) -> TRUE
@@ -111,25 +107,24 @@ board = create-board()
 
 fn switch("X") -> "O" | (_) -> "X"
 
-fn game*(p) when check-win(board, p) 
-    ->  print("Player " + p + " wins!")
+fn game*
+      (p) when check-win(board, p) 
+        ->  print("Player " + p + " wins!")
 
-fn game*(p) when check-win(board, switch(p)) 
-    ->  print("Player " + switch(p) + " wins!")
+    | (p) when check-win(board, switch(p)) 
+        ->  print("Player " + switch(p) + " wins!")
 
-fn game*(p) when board_full?(board) 
-    ->  print("It's a draw!")
+    | (p) when board_full?(board) 
+        ->  print("It's a draw!")
 
-fn game*(p) -> (
-    idx = int(input("Player " + p + " (0-8): "));
-    ok = set_board(board, idx, p);
-    game(switch(p))
-)
+    | (p) -> (
+        idx = int(input("Player " + p + " (0-8): "));
+        ok = set_board(board, idx, p);
+        game(switch(p))
+    )
 
 fn game(p) -> (
     printer(board);
-    # print("game check-win X", check-win(board, "X"));
-    # print("game check-win O", check-win(board, "O"));
     game*(p)
 )
 game("X")

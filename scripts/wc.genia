@@ -2,5 +2,5 @@
 # fn begin() -> c = 0
 fn end() -> print("    ", c)
 
-c = c + 1
+
 print(NR, $6, $7, $9)
