@@ -434,11 +434,6 @@ class Interpreter:
         self.register_foreign_function("randrange", randrange, parameters=["start", "stop"])
         self.register_foreign_function("randrange", randrange, parameters=["start", "stop", "step"])
 
-        # Define native randint in terms of randrange
-        lexer = Lexer("define randint(a, b) -> randrange(a, b + 1)")
-        parser = Parser(lexer.tokenize())
-        for stmt in parser.parse():
-            self.evaluate(stmt)
         for i in range(1, 8):
             params = [f"msg{j}" for j in range(1, i + 1)]
             self.register_foreign_function("print", self.write_to_stdout, parameters=params)
