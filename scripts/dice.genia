@@ -1,0 +1,9 @@
+define roll(sides) -> roll(1, sides)
+define roll(0, _) -> 0
+define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
+
+define int(s) -> foreign "builtins.int"
+
+[count, sides] = $ARGS
+print(roll(int(count), int(sides)))
+

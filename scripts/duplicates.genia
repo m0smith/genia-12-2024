@@ -1,7 +1,7 @@
-fn reduce(f, acc) -> fn(list) -> reduce(f, acc, list)
-fn reduce(_, acc, []) -> acc
-fn reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+define reduce(f, acc) -> define(list) -> reduce(f, acc, list)
+define reduce(_, acc, []) -> acc
+define reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
 
-fn duplicates(value, n) -> reduce(fn(acc, _) -> [..acc, value], [], 1..n)
+define duplicates(value, n) -> reduce(define(acc, _) -> [..acc, value], [], 1..n)
 
 print(duplicates("x", 5))

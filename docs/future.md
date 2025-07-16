@@ -12,5 +12,5 @@
 
 # Near future
 - Truthyness
-- A way to create a variable simialar to Clojure delay but built-in so it doesn't have to be deref
+- A way to create a variable similar to Clojure delay but built-in so it doesn't have to be deref
 - Pipelines

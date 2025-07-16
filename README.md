@@ -2,6 +2,8 @@
 
 GENIA is a concise and dynamic scripting language designed for data processing and automation tasks. It offers dual execution modes, context-aware variables, and intuitive syntax, making it accessible for both novice and experienced programmers.
 
+See [docs/goals.md](docs/goals.md) for the project goals.
+
 ## Features
 
 - **Dual Execution Modes**: Supports Default and AWK-like modes for versatile input processing.
@@ -64,13 +66,13 @@ python -m genia_interpreter script.genia 1 2 3
 #### AWK Mode Example
 
 ```genia
-fn before() {
+define before() {
     lineCount = 0;
 }
 
 lineCount = lineCount + 1;
 
-fn after() {
+define after() {
     print("Total lines: " + lineCount);
 }
 ```
@@ -79,6 +81,24 @@ Run:
 
 ```bash
 echo -e "line1\nline2" | python -m genia_interpreter --awk script.genia
+```
+
+#### Dice Rolling Example
+
+The `scripts/dice.genia` file defines a simple `roll` function. The interpreter
+exposes a foreign `randrange` function which the built-in `randint` function
+wraps for convenience.
+
+```genia
+define roll(sides) -> roll(1, sides)
+define roll(0, _) -> 0
+define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
+```
+
+Run a 2d6 roll:
+
+```bash
+python -m genia_interpreter scripts/dice.genia 2 6
 ```
 
 ## Development

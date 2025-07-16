@@ -9,16 +9,16 @@ print("Number of arguments: " , NF);
 print("Arguments list: " , $ARGS);
 
 // Simple recursive function to calculate factorial
-fn factorial(0) -> 1;
-fn factorial(n) when n > 0 -> n * factorial(n - 1);
+define factorial(0) -> 1;
+define factorial(n) when n > 0 -> n * factorial(n - 1);
 
 // Call the factorial function
 print("Factorial of 5: " , factorial(5));
 
-fn rem(x,y) -> foreign "math.remainder" | (x) -> x
+define rem(x,y) -> foreign "math.remainder" | (x) -> x
 print("rem(10) = ", rem(10))
 printenv("rem")
 a = "GLOBAL"
-fn foo() -> (a = 1; b = 2; printenv("a"); (a + b))
+define foo() -> (a = 1; b = 2; printenv("a"); (a + b))
 print("FOO:", foo())    
 printenv()

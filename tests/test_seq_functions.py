@@ -8,9 +8,9 @@ from genia.interpreter import GENIAInterpreter
 # Load base functions directly from scripts/seq.genia up to the utility section
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / 'scripts' / 'seq.genia'
 FILE_CONTENT = SCRIPT_PATH.read_text()
-BASE_FUNCTIONS = FILE_CONTENT.split('fn inc')[0]
+BASE_FUNCTIONS = FILE_CONTENT.split('define inc')[0]
 # Provide missing helper used by distinct
-BASE_FUNCTIONS += "\nfn equal?(x) -> fn(y) -> x == y | (x, y) -> x == y"
+BASE_FUNCTIONS += "\ndefine equal?(x) -> define(y) -> x == y | (x, y) -> x == y"
 
 def run(code: str):
     interp = GENIAInterpreter()

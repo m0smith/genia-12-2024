@@ -17,6 +17,7 @@ from genia.lexer import Lexer
 from genia.parser import Parser
 from genia.seq import delay_seq, Sequence, count_seq, nth_seq
 from genia.hosted.os import files_in_paths
+from genia.hosted.random_utils import randrange
 import importlib
 
 def bind_list_pattern(pattern, arg, local_env):
@@ -429,6 +430,15 @@ class Interpreter:
         self.register_foreign_function("find_files", files_in_paths, parameters=["path"])
         self.register_foreign_function("delayseq", delay_seq, parameters=["head", "tail"])
         self.register_foreign_function("lazyseq", lazyseq, parameters=["seq"])
+        self.register_foreign_function("randrange", randrange, parameters=["stop"])
+        self.register_foreign_function("randrange", randrange, parameters=["start", "stop"])
+        self.register_foreign_function("randrange", randrange, parameters=["start", "stop", "step"])
+
+        # Define native randint in terms of randrange
+        lexer = Lexer("define randint(a, b) -> randrange(a, b + 1)")
+        parser = Parser(lexer.tokenize())
+        for stmt in parser.parse():
+            self.evaluate(stmt)
         for i in range(1, 8):
             params = [f"msg{j}" for j in range(1, i + 1)]
             self.register_foreign_function("print", self.write_to_stdout, parameters=params)
@@ -964,7 +974,7 @@ def main():
 
     # Example GENIA code with regex matching
     code = """
-    fn foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
+    define foo(a) when a ~ r"[a-z]" -> 42 | (_) -> -1
     foo("aa")
     """
     # Execute the code

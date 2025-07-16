@@ -2,16 +2,16 @@ TRUE = 1 == 1
 FALSE = 1 == 2
 
 
-fn compose(f) -> fn(x) -> f(x)
-fn compose(f, g) -> fn(x) -> f(g(x))
-fn compose(f, g, h) -> fn(x) -> f(g(h(x)))
+define compose(f) -> define(x) -> f(x)
+define compose(f, g) -> define(x) -> f(g(x))
+define compose(f, g, h) -> define(x) -> f(g(h(x)))
 
-fn invert(pred) -> fn(x) when pred(x) -> FALSE | (x) -> TRUE
+define invert(pred) -> define(x) when pred(x) -> FALSE | (x) -> TRUE
 
-fn equal? (x) -> fn(y) -> x == y
+define equal? (x) -> define(y) -> x == y
     | (x, y) -> x == y
 
-fn constantly(v) -> fn(_) -> v 
+define constantly(v) -> define(_) -> v 
 
 trace()
 
