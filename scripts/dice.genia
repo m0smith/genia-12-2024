@@ -1,9 +1,3 @@
-define randint(a, b) -> randrange(a, b + 1)
-
-define roll(sides) -> roll(1, sides)
-define roll(0, _) -> 0
-define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
-
 define int(s) -> foreign "builtins.int"
 define json_loads(s) -> foreign "json.loads"
 define json_dumps(o) -> foreign "json.dumps"
@@ -11,15 +5,61 @@ define dict(pairs) -> foreign "builtins.dict"
 define getitem(obj, key) -> foreign "operator.getitem"
 define dict_get(obj, key, default) -> foreign "genia.services.dice_service.dict_get"
 
+define randint(a, b) -> randrange(a, b + 1)
+define add(x, y) -> x + y
+
+
+define reduce(f, acc) -> define(list) -> reduce(f, acc, list)
+define reduce(_, acc, []) -> acc
+define reduce(func, acc, [f, ..r]) -> reduce(func, func(acc, f), r)
+
+define count([]) -> 0
+define count(list) -> reduce(define (acc, _) -> acc + 1, 0, list)
+
+define map(f) -> define(list) -> map(f, list)
+define map(_, []) -> []
+define map(func, list) -> reduce(define (acc, el) -> [..acc, func(el)], [], list)
+
+define Roll = Roll(sides, outcome)
+
+define roll(sides) -> define (_) -> Roll(sides, randint(1, sides))
+
+define rolls(n, sides) -> map(roll(sides), 1..n)
+define rolls(0, _) -> [Roll(0, 0)]
+
+define get_result(Roll(_, result)) -> result
+define get_sides(Roll(sides, _)) -> sides
+define sum_rolls(rolled) -> reduce(add, 0, map(get_result, rolled))
+define max_rolls(rolled) -> reduce(add, 0, map(get_sides, rolled))
+define min_rolls(rolled) -> count(rolled)
+
 define handle_request(body) -> (
     data = json_loads(body);
+    print(data);
     count = int(dict_get(data, "count", 1));
-    sides = int(dict_get(data, "sides", 6));
-    json_dumps(dict([["result", roll(count, sides)]]))
+    sides = int(dict_get(data, "sides", 20));
+    rolled = rolls(count, sides);
+    result = sum_rolls(rolled);
+    json_dumps(dict([
+        ["result", result], 
+        ["rolls", rolled], 
+        ["min", min_rolls(rolled)], 
+       [ "max", max_rolls(rolled)]]))
 )
 
-define main([count, sides]) -> print(roll(int(count), int(sides)))
-    | (_) -> 0
+define main
+    ([count, sides, c2, s2]) -> [..rolls(int(count), int(sides)), ..rolls(int(c2), int(s2)) ]
+    | ([count, sides]) -> rolls(int(count), int(sides))
+    | ([sides]) -> rolls(1, int(sides))
+    | (_) -> rolls(1, 20)
 
-main($ARGS)
+rolled = main($ARGS)
+
+print(rolled)
+print("total")
+print(sum_rolls(rolled))
+print("min")
+print(min_rolls(rolled))
+print("max")
+print(max_rolls(rolled))
 
