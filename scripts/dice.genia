@@ -48,7 +48,7 @@ define handle_request(body) -> (
 )
 
 define main
-    ([count, sides, c2, s2]) -> [..rolls(int(count), int(sides)), ..rolls(int(c2), int(s2)) ]
+      ([count, sides, c2, s2]) -> [..rolls(int(count), int(sides)), ..rolls(int(c2), int(s2)) ]
     | ([count, sides]) -> rolls(int(count), int(sides))
     | ([sides]) -> rolls(1, int(sides))
     | (_) -> rolls(1, 20)
