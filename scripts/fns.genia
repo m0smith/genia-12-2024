@@ -1,17 +1,28 @@
 TRUE = 1 == 1
 FALSE = 1 == 2
 
-
-define compose(f) -> define(x) -> f(x)
-define compose(f, g) -> define(x) -> f(g(x))
+define varargs (f) -> (
+    define () -> f()
+    | (a1) -> f(a1)
+    | (a1,a2) -> f(a1,a2)
+)
+ 
+define compose(f)       -> varargs(f)
+define compose(f, g)    -> define(x, y) -> f(g(x, y))
 define compose(f, g, h) -> define(x) -> f(g(h(x)))
 
 define invert(pred) -> define(x) when pred(x) -> FALSE | (x) -> TRUE
+
+define double(x) -> x * x
+define add () -> 0
+    | (x) -> x
+    | (x, y) -> x + y
 
 define equal? (x) -> define(y) -> x == y
     | (x, y) -> x == y
 
 define constantly(v) -> define(_) -> v 
 
-trace()
+f = compose(double, add)
+print(f(1,2))
 
