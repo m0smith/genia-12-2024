@@ -23,6 +23,8 @@ define map(func, list) -> reduce(define (acc, el) -> [..acc, func(el)], [], list
 define Roll = Roll(sides, outcome)
 
 define roll(sides) -> define (_) -> Roll(sides, randint(1, sides))
+define roll(0, _) -> 0
+define roll(n, sides) -> randint(1, sides) + roll(n - 1, sides)
 
 define rolls(n, sides) -> map(roll(sides), 1..n)
 define rolls(0, _) -> [Roll(0, 0)]
@@ -53,13 +55,19 @@ define main
     | ([sides]) -> rolls(1, int(sides))
     | (_) -> rolls(1, 20)
 
-rolled = main($ARGS)
+# Only execute when arguments are provided
+define __run_main(args) when args != [] -> (
+    rolled = main(args);
+    print(rolled);
+    print("total");
+    print(sum_rolls(rolled));
+    print("min");
+    print(min_rolls(rolled));
+    print("max");
+    print(max_rolls(rolled))
+)
 
-print(rolled)
-print("total")
-print(sum_rolls(rolled))
-print("min")
-print(min_rolls(rolled))
-print("max")
-print(max_rolls(rolled))
+define __run_main(_) -> 0
+
+__run_main($ARGS)
 
