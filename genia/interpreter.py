@@ -20,6 +20,43 @@ from genia.hosted.os import files_in_paths
 from genia.hosted.random_utils import randrange
 import importlib
 
+
+def op_add(*args):
+    """Addition with variable arguments. +() == 0"""
+    return sum(args) if args else 0
+
+
+def op_mul(*args):
+    """Multiplication with variable arguments. *() == 1"""
+    result = 1
+    for a in args:
+        result *= a
+    return result
+
+
+def op_sub(*args):
+    """Subtraction with variable arguments following Clojure semantics."""
+    if not args:
+        return 0
+    if len(args) == 1:
+        return -args[0]
+    result = args[0]
+    for a in args[1:]:
+        result -= a
+    return result
+
+
+def op_div(*args):
+    """Integer division with variable arguments. /() == 1"""
+    if not args:
+        return 1
+    if len(args) == 1:
+        return 1 // args[0]
+    result = args[0]
+    for a in args[1:]:
+        result //= a
+    return result
+
 def bind_list_pattern(pattern, arg, local_env):
     elements = pattern['elements']
     if len(elements) == 0:
@@ -440,6 +477,18 @@ class Interpreter:
         self.register_foreign_function("printenv", self.printenv)
         self.register_foreign_function("printenv", self.printenv, parameters=["name"])
         self.register_foreign_function("trace", self.do_trace)
+
+        # Register operator functions for variable argument support
+        op_funcs = {
+            '+': op_add,
+            '*': op_mul,
+            '-': op_sub,
+            '/': op_div,
+        }
+        for name, func in op_funcs.items():
+            for i in range(0, 9):
+                params = [f"a{j}" for j in range(1, i + 1)]
+                self.register_foreign_function(name, func, parameters=params)
 
     def register_foreign_function(self, name, function, parameters=None, guard=None, line=0, column=0):
         """
