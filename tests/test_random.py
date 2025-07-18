@@ -1,5 +1,9 @@
 import random
 from pathlib import Path
+import sys
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 from genia.interpreter import GENIAInterpreter
 
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / 'scripts' / 'dice.genia'

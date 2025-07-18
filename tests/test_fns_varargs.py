@@ -31,3 +31,8 @@ def test_compose_varargs_arguments():
         'f(1,2,3)'
     ])
     assert run(code) == 36
+
+
+def test_compose_with_operator():
+    code = 'f = compose(double, +)\nf(1,2)'
+    assert run(code) == 9

@@ -532,10 +532,31 @@ class Parser:
         """
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
-        elif token_type == 'OPERATOR' and value in {'-', '+'}:
-            # Parse the operand of unary '+' and '-' with a higher precedence so
-            # that expressions like `-1..10` are parsed as `( -1 ) .. 10` rather
-            # than `-(1 .. 10)`.
+        elif token_type == 'OPERATOR' and value in {'-', '+', '*', '/'}:
+            # If followed by '(', treat as a function call (e.g., +(1,2))
+            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(': 
+                self.tokens.popleft()
+                arguments = []
+                while self.tokens and not (self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')'):
+                    arguments.append(self.expression())
+                    if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ',':
+                        self.tokens.popleft()
+                if not self.tokens or not (self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == ')'):
+                    raise self.SyntaxError(f"Unmatched '(' in function call at line {line}, column {column}.")
+                self.tokens.popleft()
+                return {
+                    'type': 'function_call',
+                    'name': value,
+                    'arguments': arguments,
+                    'line': line,
+                    'column': column
+                }
+            # If there's no operand, treat operator as identifier
+            if not self.tokens or (
+                self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] in {')', ',', ';'}
+            ):
+                return {'type': 'identifier', 'value': value, 'line': line, 'column': column}
+            # Otherwise treat as unary operator
             operand = self.expression(self.PRECEDENCE['UNARY'])
             return {
                     'type': 'unary_operator',
@@ -555,9 +576,9 @@ class Parser:
                     'column': column}
         elif token_type in {'STRING', 'RAW_STRING'}:
             return {'type': token_type.lower(), 'value': value, 'line': line, 'column': column}
-        elif token_type == 'IDENTIFIER':
-            # Check if this is a function call
-            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(':
+        elif token_type in {'IDENTIFIER', 'OPERATOR'}:
+            # Check if this is a function call, allowing operators like '+' as names
+            if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(': 
                 self.tokens.popleft()  # Consume '('
                 arguments = []
                 # Parse arguments separated by commas
