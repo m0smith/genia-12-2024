@@ -533,7 +533,7 @@ class Parser:
         if token_type == 'NUMBER':
             return {'type': 'number', 'value': value, 'line': line, 'column': column}
         elif token_type == 'OPERATOR' and value in {'-', '+'}:
-            # If followed by '(', treat as a function call (e.g., +(1,2))
+            # Treat leading '+' or '-' as a function call if followed by '('.
             if self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] == '(': 
                 self.tokens.popleft()
                 arguments = []
@@ -551,14 +551,25 @@ class Parser:
                     'line': line,
                     'column': column
                 }
-            # Otherwise treat as unary operator
-            operand = self.expression(self.PRECEDENCE['UNARY'])
-            return {
-                    'type': 'unary_operator',
-                    'operator': value,
-                    'operand': operand,
-                    'line': line,
-                    'column': column}
+
+            # Determine if this is a unary operator or a bare identifier.
+            if self.tokens and self.tokens[0][0] in {
+                'NUMBER', 'STRING', 'RAW_STRING', 'IDENTIFIER', 'KEYWORD'
+            } or (
+                self.tokens and self.tokens[0][0] == 'PUNCTUATION' and self.tokens[0][1] in {'(', '['}
+            ) or (
+                self.tokens and self.tokens[0][0] == 'OPERATOR' and self.tokens[0][1] in {'+', '-', '*', '/', '%', '..'}
+            ):
+                operand = self.expression(self.PRECEDENCE['UNARY'])
+                return {
+                        'type': 'unary_operator',
+                        'operator': value,
+                        'operand': operand,
+                        'line': line,
+                        'column': column}
+
+            # Otherwise treat '+' or '-' as an identifier (useful for higher-order functions)
+            return {'type': 'identifier', 'value': value, 'line': line, 'column': column}
         elif token_type == 'OPERATOR' and value == '..':
             # Spread operator should capture the following expression as-is so
             # patterns like `..1..3` continue to work.
