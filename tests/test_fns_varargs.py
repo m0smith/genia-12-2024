@@ -15,12 +15,12 @@ def run(code: str):
 
 
 def test_compose_two_functions():
-    code = 'f = compose(double, add)\nf(1,2)'
+    code = 'f = compose(double, +)\nf(1,2)'
     assert run(code) == 9
 
 
 def test_compose_three_functions():
-    code = 'f = compose(double, add, add)\nf(2,3)'
+    code = 'f = compose(double, +, +)\nf(2,3)'
     assert run(code) == 25
 
 

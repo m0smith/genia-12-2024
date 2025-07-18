@@ -486,7 +486,7 @@ class Interpreter:
             '/': op_div,
         }
         for name, func in op_funcs.items():
-            for i in range(0, 9):
+            for i in range(0, 20):
                 params = [f"a{j}" for j in range(1, i + 1)]
                 self.register_foreign_function(name, func, parameters=params)
 

@@ -2,13 +2,13 @@ define apply(f, []) -> f()
 define apply(f, [a]) -> f(a)
 define apply(f, [a, b]) -> f(a, b)
 define apply(f, [a, b, c]) -> f(a, b, c)
-define apply(f, [a, b, c, d, ..r]) -> f(a, b, c, d)
+define apply(f, [a, b, c, d]) -> f(a, b, c, d)
+define apply(f, [a1,a2,a3,a4,a5]) -> f(a1,a2,a3,a4,a5)
+define apply(f, [a1,a2,a3,a4,a5,a6]) -> f(a1,a2,a3,a4,a5,a6)
+define apply(f, [a1,a2,a3,a4,a5,a6,a7]) -> f(a1,a2,a3,a4,a5,a6,a7)
+define apply(f, [a1,a2,a3,a4,a5,a6,a7,a8]) -> f(a1,a2,a3,a4,a5,a6,a7,a8)
+define apply(f, [a1,a2,a3,a4,a5,a6,a7,a8,a9]) -> f(a1,a2,a3,a4,a5,a6,a7,a8,a9)
+define apply(f, [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10]) -> f(a1,a2,a3,a4,a5,a6,a7,a8,a9,a10)
+define apply(f, [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11]) -> f(a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11)
 
-define add(a,b,c,d) -> a + b + c + d
-define add(a,b,c) -> a + b + c
-define add(a,b) -> a + b
-define add(a) -> a
-define add() -> 0
-
-
-print(apply(add, [1,2,3, 5]))
+print(apply(+, 1..11))

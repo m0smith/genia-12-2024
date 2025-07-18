@@ -36,15 +36,12 @@ define compose () -> varargs(define(x) -> x)
 define invert(pred) -> define(x) when pred(x) -> FALSE | (x) -> TRUE
 
 define double(x) -> x * x
-define add () -> 0
-    | (x) -> x
-    | (x, y) -> x + y
 
 define equal? (x) -> define(y) -> x == y
     | (x, y) -> x == y
 
 define constantly(v) -> define(_) -> v 
 
-f = compose(double, add)
+f = compose(double, +)
 print(f(1,2))
 
