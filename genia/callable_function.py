@@ -1,7 +1,6 @@
 from genia.lazy_seq import LazySeq
-from collections import deque
-from itertools import islice
 from genia.patterns import bind_list_pattern
+from genia.seq import Sequence
 
 
 class CallableFunction:
@@ -39,12 +38,14 @@ class CallableFunction:
                 raise ValueError(f"Unsupported parameter type: {param['type']}")
             
     def match_list_pattern(self, pattern, arg):
-        if not isinstance(arg, (list, LazySeq)):
+        if not isinstance(arg, (list, LazySeq, Sequence)):
             return False
         if isinstance(arg, list):
             return self.match_list_pattern_list(pattern, arg)
         elif isinstance(arg, LazySeq):
             return self.match_list_pattern_lazy_seq(pattern, arg)
+        elif isinstance(arg, Sequence):
+            return self.match_list_pattern_sequence(pattern, arg)
         else:
             raise ValueError(f"Unsupported type: {type(arg)}")
     
@@ -57,16 +58,62 @@ class CallableFunction:
             return len(lst) >= len(elements) - 1
         return len(lst) == len(elements)  # Exact length match
     
+    def _match_length_iter(self, elements, iterator):
+        """Check sequence length using incremental iteration.
+
+        Only consumes as many elements from ``iterator`` as necessary to
+        determine whether ``elements`` match by length.  This avoids eager
+        evaluation of potentially infinite or expensive sequences.
+        """
+        n = len(elements)
+
+        # Handle empty pattern
+        if n == 0:
+            try:
+                next(iterator)
+                return False
+            except StopIteration:
+                return True
+
+        # Determine if the pattern uses a rest element at the end
+        has_rest = n >= 2 and elements[-1]["type"] == "rest"
+        required = n - 1 if has_rest else n
+
+        count = 0
+        for _ in iterator:
+            count += 1
+            if count >= required:
+                if has_rest:
+                    return True
+                # For exact match, we still need to ensure there are no extra
+                # elements.  Peek one more and abort early if found.
+                try:
+                    next(iterator)
+                    return False
+                except StopIteration:
+                    return True
+        # Iterator exhausted before reaching required length
+        return False
+
     def match_list_pattern_lazy_seq(self, pattern, lazy_seq):
-        elements = pattern['elements']
-        it = iter(lazy_seq)
-        len_it = len(deque(it, maxlen=len(elements) + 1))
-        # if len(elements) == 0:  # Match an empty list
-        #     return len(lazy_seq) == 0
-        if len(elements) >= 2 and elements[-1]['type'] == 'rest':
-            # Match `[first, ..rest]`
-            return len_it >= len(elements) - 1
-        return len_it == len(elements)  # Exact length match
+        elements = pattern["elements"]
+        return self._match_length_iter(elements, iter(lazy_seq))
+
+    def match_list_pattern_sequence(self, pattern, sequence):
+        elements = pattern["elements"]
+
+        def iter_sequence(seq):
+            s = seq
+            while isinstance(s, Sequence) and not s.is_empty():
+                # We don't care about the actual values, only the presence of
+                # elements, so just advance the sequence.
+                s = s.rest()
+                yield None
+            if isinstance(s, list):
+                for _ in s:
+                    yield None
+
+        return self._match_length_iter(elements, iter_sequence(sequence))
     
     def bind_parameters(self, definition, args):
         local_env = {}
