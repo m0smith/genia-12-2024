@@ -15,10 +15,121 @@ import genia
 from genia.lazy_seq import lazyseq
 from genia.lexer import Lexer
 from genia.parser import Parser
-from genia.seq import delay_seq, Sequence, count_seq, nth_seq
+from genia.seq import delay_seq, Sequence, nth_seq
 from genia.hosted.os import files_in_paths
 from genia.hosted.random_utils import randrange
 import importlib
+from typing import Protocol, runtime_checkable, Any
+
+
+@runtime_checkable
+class ListProtocol(Protocol):
+    """Protocol for list-like values used in pattern matching.
+
+    An implementation only needs to provide ``head`` for indexed access,
+    ``tail`` for slicing from an index and ``to_list`` for materialising
+    the structure.  Adapters for ``list``, ``LazySeq`` and ``Sequence`` are
+    provided below.  Future strategies can conform by implementing these
+    three methods.
+    """
+
+    def head(self, index: int = 0) -> Any:
+        ...
+
+    def tail(self, start: int = 1):
+        ...
+
+    def to_list(self) -> list:
+        ...
+
+
+class ListAdapter:
+    """Adapter implementing :class:`ListProtocol` for Python ``list``."""
+
+    def __init__(self, data: list):
+        self.data = data
+
+    def head(self, index: int = 0):
+        return self.data[index]
+
+    def tail(self, start: int = 1):
+        return self.data[start:]
+
+    def to_list(self) -> list:
+        return list(self.data)
+
+
+class LazySeqAdapter:
+    """Adapter implementing :class:`ListProtocol` for ``LazySeq``."""
+
+    def __init__(self, seq: LazySeq):
+        self.seq = seq
+
+    def head(self, index: int = 0):
+        try:
+            return next(islice(self.seq, index, index + 1))
+        except StopIteration as e:
+            raise IndexError("index out of range") from e
+
+    def tail(self, start: int = 1):
+        return list(islice(self.seq, start, None))
+
+    def to_list(self) -> list:
+        return list(self.seq)
+
+
+class SequenceAdapter:
+    """Adapter implementing :class:`ListProtocol` for ``Sequence``."""
+
+    def __init__(self, seq: Sequence):
+        self.seq = seq
+
+    def head(self, index: int = 0):
+        try:
+            return nth_seq(index, self.seq)
+        except Exception as e:
+            raise IndexError("index out of range") from e
+
+    def tail(self, start: int = 1):
+        s = self.seq
+        for _ in range(start):
+            s = s.rest()
+            if isinstance(s, list):
+                break
+        return s
+
+    def to_list(self) -> list:
+        out = []
+        s = self.seq
+        while isinstance(s, Sequence) and not s.is_empty():
+            out.append(s.first())
+            s = s.rest()
+        if isinstance(s, list):
+            out.extend(s)
+        return out
+
+
+def as_list_protocol(value) -> ListProtocol:
+    """Return a :class:`ListProtocol` adapter for ``value``."""
+
+    if isinstance(value, ListProtocol):
+        return value
+    if isinstance(value, list):
+        return ListAdapter(value)
+    if isinstance(value, LazySeq):
+        return LazySeqAdapter(value)
+    if isinstance(value, Sequence):
+        return SequenceAdapter(value)
+    raise TypeError(f"Unsupported list type: {type(value).__name__}")
+
+
+def _is_spread(element: dict) -> bool:
+    return (
+        (element.get("type") == "unary_operator" and element.get("operator") == "..")
+        or element.get("type") == "rest"
+    )
+
+
 from genia.patterns import bind_list_pattern
 
 
@@ -124,18 +235,10 @@ class CallableFunction:
                 raise ValueError(f"Unsupported parameter type: {param['type']}")
 
     def match_list_pattern(self, pattern, arg):
-        if not isinstance(arg, (list, LazySeq, Sequence)):
+        try:
+            lst = as_list_protocol(arg).to_list()
+        except TypeError:
             return False
-        if isinstance(arg, list):
-            return self.match_list_pattern_list(pattern, arg)
-        elif isinstance(arg, LazySeq):
-            return self.match_list_pattern_lazy_seq(pattern, arg)
-        elif isinstance(arg, Sequence):
-            return self.match_list_pattern_sequence(pattern, arg)
-        else:
-            raise ValueError(f"Unsupported type: {type(arg).__name__}")
-
-    def match_list_pattern_list(self, pattern, lst):
         elements = pattern['elements']
         if len(elements) == 0:
             return len(lst) == 0
@@ -143,62 +246,39 @@ class CallableFunction:
         # Special case: [..pre, mid, ..post]
         if (
             len(elements) == 3
-            and elements[0]['type'] == 'unary_operator' and elements[0]['operator'] == '..'
-            and elements[2]['type'] == 'unary_operator' and elements[2]['operator'] == '..'
+            and _is_spread(elements[0])
+            and _is_spread(elements[2])
         ):
             mid = elements[1]
             return any(self.match_parameter(mid, v) for v in lst)
 
-        spread_indices = [i for i,e in enumerate(elements) if e['type']=='unary_operator' and e['operator']=='..']
+        spread_indices = [i for i, e in enumerate(elements) if _is_spread(e)]
         if len(spread_indices) == 0:
             if len(lst) != len(elements):
                 return False
-            return all(self.match_parameter(p,v) for p,v in zip(elements,lst))
-        if len(spread_indices) == 1 and spread_indices[0] == len(elements)-1:
-            if len(lst) < len(elements)-1:
+            return all(self.match_parameter(p, v) for p, v in zip(elements, lst))
+        if len(spread_indices) == 1 and spread_indices[0] == len(elements) - 1:
+            if len(lst) < len(elements) - 1:
                 return False
-            for p,v in zip(elements[:-1], lst[:len(elements)-1]):
-                if not self.match_parameter(p,v):
+            for p, v in zip(elements[:-1], lst[: len(elements) - 1]):
+                if not self.match_parameter(p, v):
                     return False
             return True
-        # Fallback to length check
         if len(spread_indices) == 1:
             idx = spread_indices[0]
             prefix = elements[:idx]
-            suffix = elements[idx+1:]
-            if len(lst) < len(prefix)+len(suffix):
+            suffix = elements[idx + 1 :]
+            if len(lst) < len(prefix) + len(suffix):
                 return False
-            for p,v in zip(prefix, lst[:len(prefix)]):
-                if not self.match_parameter(p,v):
+            for p, v in zip(prefix, lst[: len(prefix)]):
+                if not self.match_parameter(p, v):
                     return False
-            for p,v in zip(suffix, lst[-len(suffix):]):
-                if not self.match_parameter(p,v):
+            for p, v in zip(suffix, lst[-len(suffix) :]):
+                if not self.match_parameter(p, v):
                     return False
             return True
 
         return False
-
-    def match_list_pattern_lazy_seq(self, pattern, lazy_seq):
-        elements = pattern['elements']
-        try:
-            len_it = len(list(islice(lazy_seq, len(elements) + 1)))
-        except TypeError:
-            len_it = 0  # If not iterable
-        if len(elements) >= 2 and elements[-1]['type'] == 'unary_operator' and elements[-1]['operator'] == "..":
-            # Match `[first, ..rest]`
-            return len_it >= len(elements) - 1
-        return len_it == len(elements)  # Exact length match
-    
-    def match_list_pattern_sequence(self, pattern, sequence):
-        elements = pattern['elements']
-        try:
-            len_it = count_seq(len(elements) + 1, sequence)
-        except TypeError:
-            len_it = 0  # If not iterable
-        if len(elements) >= 2 and elements[-1]['type'] == 'unary_operator' and elements[-1]['operator'] == "..":
-            # Match `[first, ..rest]`
-            return len_it >= len(elements) - 1
-        return len_it == len(elements)  # Exact length match
 
     def match_constructor_pattern(self, pattern, arg):
         if not isinstance(arg, dict):
