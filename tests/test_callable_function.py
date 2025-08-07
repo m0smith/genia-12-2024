@@ -6,6 +6,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from genia.callable_function import CallableFunction
+from genia.lazy_seq import LazySeq
+from genia.seq import IterSeq
 
 class MockInterpreter:
     """A mock interpreter to simulate environment and evaluation for testing."""
@@ -150,3 +152,39 @@ def test_parameter_binding():
     })
     local_env = func.bind_parameters(func.definitions[0], [[1, 2, 3]])
     assert local_env == {"first": 1, "rest": [2, 3]}
+
+
+def test_lazy_seq_match_short_circuits():
+    func = CallableFunction("test")
+    pattern = {
+        "type": "list_pattern",
+        "elements": [
+            {"type": "identifier", "value": "x"},
+            {"type": "rest", "value": "xs"},
+        ],
+    }
+
+    def gen():
+        yield 1
+        raise AssertionError("eager evaluation")
+
+    seq = LazySeq(seq=gen())
+    assert func.match_list_pattern(pattern, seq)
+
+
+def test_sequence_match_short_circuits():
+    func = CallableFunction("test")
+    pattern = {
+        "type": "list_pattern",
+        "elements": [
+            {"type": "identifier", "value": "x"},
+            {"type": "rest", "value": "xs"},
+        ],
+    }
+
+    def gen():
+        yield 1
+        raise AssertionError("eager evaluation")
+
+    seq = IterSeq(gen())
+    assert func.match_list_pattern(pattern, seq)
