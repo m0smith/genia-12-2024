@@ -19,6 +19,7 @@ from genia.seq import delay_seq, Sequence, count_seq, nth_seq
 from genia.hosted.os import files_in_paths
 from genia.hosted.random_utils import randrange
 import importlib
+from genia.patterns import bind_list_pattern
 
 
 def op_add(*args):
@@ -56,84 +57,6 @@ def op_div(*args):
     for a in args[1:]:
         result //= a
     return result
-
-def bind_list_pattern(pattern, arg, local_env):
-    elements = pattern['elements']
-    if len(elements) == 0:
-        return
-    # Handle pattern of form [..pre, mid, ..post]
-    if (
-        len(elements) == 3
-        and elements[0]['type'] == 'unary_operator' and elements[0]['operator'] == '..'
-        and elements[2]['type'] == 'unary_operator' and elements[2]['operator'] == '..'
-        and isinstance(arg, list)
-    ):
-        pre_name = elements[0]['operand']['value']
-        post_name = elements[2]['operand']['value']
-        mid_pat = elements[1]
-        cf = CallableFunction('_bind_helper')
-        for i, val in enumerate(arg):
-            if cf.match_parameter(mid_pat, val):
-                local_env[pre_name] = arg[:i]
-                local_env[post_name] = arg[i+1:]
-                # Bind middle element if needed
-                match mid_pat.get('type'):
-                    case 'identifier':
-                        local_env[mid_pat['value']] = val
-                    case 'wildcard':
-                        pass
-                    case 'list_pattern':
-                        bind_list_pattern(mid_pat, val, local_env)
-                    case 'constructor_pattern':
-                        cf.bind_constructor_pattern(mid_pat, val, local_env)
-                    case 'number_literal':
-                        if val != mid_pat['value']:
-                            raise RuntimeError("Pattern mismatch")
-                    case 'string_literal':
-                        if val != mid_pat['value']:
-                            raise RuntimeError("Pattern mismatch")
-                return
-        raise RuntimeError("No matching element for pattern")
-    for i, element in enumerate(elements):
-        if element['type'] == 'unary_operator' and element['operator'] == "..":
-            if isinstance(arg, list):
-                local_env[element['operand']['value']] = arg[i:]
-            elif isinstance(arg, LazySeq):
-                local_env[element['operand']['value']] = list(islice(arg, i, None))
-            elif isinstance(arg, Sequence):
-                local_env[element['operand']['value']] = arg.rest()
-            else:
-                raise ValueError(f"Unsupported type for spread binding: {type(arg).__name__}")
-        else:
-            if isinstance(arg, list):
-                if i < len(arg):
-                    if element['type'] == 'wildcard':
-                        pass
-                    else:
-                        local_env[element['value']] = arg[i]
-                else:
-                    raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
-            elif isinstance(arg, LazySeq):
-                try:
-                    
-                    if element['type'] == 'wildcard':
-                        pass
-                    else:
-                        v = next(islice(arg, i, i + 1))
-                        local_env[element['value']] = v
-                except StopIteration:
-                    raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
-            elif isinstance(arg, Sequence):
-                try:
-                    
-                    if element['type'] == 'wildcard':
-                        pass
-                    else:
-                        local_env[element['value']] = nth_seq(i, arg)
-                except StopIteration:
-                    raise RuntimeError(f"Not enough elements to bind parameter '{element['value']}'")
-            else:
-                raise ValueError(f"Unsupported type for binding: {type(arg).__name__}")
 
 
 class TailCall:

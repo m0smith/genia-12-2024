@@ -1,6 +1,7 @@
 from genia.lazy_seq import LazySeq
 from collections import deque
 from itertools import islice
+from genia.patterns import bind_list_pattern
 
 
 class CallableFunction:
@@ -72,7 +73,7 @@ class CallableFunction:
         for param, arg in zip(definition['parameters'], args):
             match param.get('type'):
                 case 'list_pattern':
-                    self.bind_list_pattern(param, arg, local_env)
+                    bind_list_pattern(param, arg, local_env)
                 case 'identifier':
                     local_env[param['value']] = arg
                 case 'string':
@@ -82,23 +83,6 @@ class CallableFunction:
                 case _:
                     raise ValueError(f"Unsupported parameter type: {param['type']}")
         return local_env
-
-    def bind_list_pattern(self, pattern, arg, local_env):
-        elements = pattern['elements']
-        if len(elements) == 0:  # Empty list
-            return
-        for i, element in enumerate(elements):
-            if element['type'] == 'rest':
-                # Convert the remaining elements of the iterator into a list
-                if hasattr(arg, '__getitem__'):  # Check if `arg` is a list-like object
-                    local_env[element['value']] = arg[i:]
-                else:  # Assume `arg` is an iterator
-                    local_env[element['value']] = list(islice(arg, i, None))
-            else:
-                if hasattr(arg, '__getitem__'):  # Check if `arg` is a list-like object
-                    local_env[element['value']] = arg[i]
-                else:  # Assume `arg` is an iterator
-                    local_env[element['value']] = next(islice(arg, i, i + 1))
     
     def __repr__(self):
         import json
